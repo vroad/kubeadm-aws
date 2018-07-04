@@ -35,6 +35,11 @@ variable "secret_key" {
 
 variable "k8s-ssh-key" {}
 
+variable "admin-cidr-blocks" {
+  default     = ""
+  description = "A comma separated list of CIDR blocks to allow SSH connections from."
+}
+
 variable "region" {
   default = "us-east-1"
 }

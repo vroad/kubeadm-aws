@@ -79,7 +79,7 @@ resource "aws_route_table_association" "publicC" {
 resource "aws_subnet" "publicA" {
     vpc_id = "${aws_vpc.main.id}"
     cidr_block = "10.0.100.0/24"
-    availability_zone = "us-east-1c"
+    availability_zone = "us-east-1a"
     map_public_ip_on_launch = true
 
     tags {
@@ -90,7 +90,7 @@ resource "aws_subnet" "publicA" {
 resource "aws_subnet" "publicB" {
     vpc_id = "${aws_vpc.main.id}"
     cidr_block = "10.0.101.0/24"
-    availability_zone = "us-east-1d"
+    availability_zone = "us-east-1b"
     map_public_ip_on_launch = true
 
     tags {
@@ -101,7 +101,7 @@ resource "aws_subnet" "publicB" {
 resource "aws_subnet" "publicC" {
     vpc_id = "${aws_vpc.main.id}"
     cidr_block = "10.0.102.0/24"
-    availability_zone = "us-east-1e"
+    availability_zone = "us-east-1c"
     map_public_ip_on_launch = true
 
     tags {
@@ -118,7 +118,7 @@ resource "aws_security_group" "kubernetes" {
       from_port = 22
       to_port = 22
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
+      cidr_blocks = ${split(",", var.admin-cidr-blocks)}
   }
 
   ingress {
@@ -204,4 +204,4 @@ resource "aws_instance" "k8s-worker2" {
   tags {
       Name = "worker1"
   }
-}
+
