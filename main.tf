@@ -158,8 +158,18 @@ data "template_file" "worker-userdata" {
     }
 }
 
+data "aws_ami" "latest_ami" {
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-instance/ubuntu-xenial-16.04-amd64-server-*"]
+  }
+
+  most_recent = true
+  owners      = ["099720109477"] # Ubuntu
+}
+
 resource "aws_instance" "k8s-master" {
-  ami           = "ami-2ef48339"
+  ami           = "${data.aws_ami.latest_ami.id}"
   instance_type = "t2.medium"
   subnet_id = "${aws_subnet.publicA.id}"
   user_data = "${data.template_file.master-userdata.rendered}"
@@ -170,12 +180,12 @@ resource "aws_instance" "k8s-master" {
   depends_on = ["aws_internet_gateway.gw"]
 
   tags {
-      Name = "[TF] k8s-master"
+      Name = "k8s-master"
   }
 }
 
 resource "aws_instance" "k8s-worker1" {
-  ami           = "ami-2ef48339"
+  ami           = "${data.aws_ami.latest_ami.id}"
   instance_type = "t2.medium"
   subnet_id = "${aws_subnet.publicA.id}"
   user_data = "${data.template_file.worker-userdata.rendered}"
@@ -186,12 +196,12 @@ resource "aws_instance" "k8s-worker1" {
   depends_on = ["aws_internet_gateway.gw"]
 
   tags {
-      Name = "worker0"
+      Name = "k8s-worker0"
   }
 }
 
 resource "aws_instance" "k8s-worker2" {
-  ami           = "ami-2ef48339"
+  ami           = "${data.aws_ami.latest_ami.id}"
   instance_type = "t2.medium"
   subnet_id = "${aws_subnet.publicA.id}"
   user_data = "${data.template_file.worker-userdata.rendered}"
@@ -202,6 +212,6 @@ resource "aws_instance" "k8s-worker2" {
   depends_on = ["aws_internet_gateway.gw"]
 
   tags {
-      Name = "worker1"
+      Name = "k8s-worker1"
   }
 
