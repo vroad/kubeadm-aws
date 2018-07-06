@@ -2,19 +2,33 @@
 swapoff -a
 sed -i '/swap/d' /etc/fstab
 
-# Install K8S and Kubeadm
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-deb http://apt.kubernetes.io/ kubernetes-xenial main
-EOF
+# Install K8S, kubeadm and Docker
 apt-get update
-apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+apt-get dist-upgrade -y
+apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-# Install Docker and point at big ephemeral drive
-curl -sSL https://get.docker.com/ | sh
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+
+add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+add-apt-repository "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable"
+
+apt-get update
+apt-get install -y kubelet kubeadm kubectl docker-ce
+
+# Point Docker at big ephemeral drive and turn on log rotation
 mkdir /mnt/docker
-echo 'export DOCKER_OPTS="-g /mnt/docker --log-driver=json-file --log-opt=max-size=10m --log-opt=max-file=5"' >> /etc/default/docker
-systemctl start docker
+cat <<EOF > /etc/docker/daemon.json
+{
+    "data-root": "/mnt/docker",
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "10m",
+        "max-file": "5"
+    }
+}
+EOF
+systemctl restart docker
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel)
 echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
