@@ -5,7 +5,6 @@ sed -i '/swap/d' /etc/fstab
 # Install K8S, kubeadm and Docker
 apt-get update
 apt-get dist-upgrade -y
-apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
@@ -29,6 +28,10 @@ cat <<EOF > /etc/docker/daemon.json
 }
 EOF
 systemctl restart docker
+
+# Point kubelet at big ephemeral drive
+mkdir /mnt/kubelet
+echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet"' > /etc/default/kubelet
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel)
 echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
