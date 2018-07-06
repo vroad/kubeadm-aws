@@ -1,4 +1,6 @@
 #!/bin/bash -v
+swapoff -a
+sed -i '/swap/d' /etc/fstab
 
 curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
@@ -9,4 +11,4 @@ apt-get install -y kubelet kubeadm kubectl kubernetes-cni
 curl -sSL https://get.docker.com/ | sh
 systemctl start docker
 
-for i in {1..50}; do kubeadm join --token=${k8stoken} ${masterIP} && break || sleep 15; done
+for i in {1..50}; do kubeadm join --token=${k8stoken} --discovery-token-unsafe-skip-ca-verification ${masterIP} && break || sleep 15; done

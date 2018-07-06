@@ -20,6 +20,11 @@ The terraform script builds out a new VPC in your account and 3 corresponding su
 - ssh to kube master and run something: `ssh ubuntu@$(terraform output master_dns) -i k8s-test`
 - Done!
 
+### TODO
+
+* Remove need ECRReadOnly Instance Profile to be pre-created
+* Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests.
+
 ### About
 
 Built by UPMC Enterprises in Pittsburgh, PA. http://enterprises.upmc.com/

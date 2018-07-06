@@ -1,4 +1,6 @@
 #!/bin/bash -v
+swapoff -a
+sed -i '/swap/d' /etc/fstab
 
 curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
@@ -11,4 +13,4 @@ systemctl start docker
 
 kubeadm init --token=${k8stoken}
 
-kubectl apply -f https://git.io/weave-kube
+#kubectl apply -f https://git.io/weave-kube

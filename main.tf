@@ -35,7 +35,7 @@ resource "aws_vpc" "main" {
     enable_dns_hostnames = true
 
     tags {
-        Name = "TF_VPC"
+        Name = "K8S_VPC"
     }
 }
 
@@ -43,7 +43,7 @@ resource "aws_internet_gateway" "gw" {
     vpc_id = "${aws_vpc.main.id}"
 
     tags {
-        Name = "TF_main"
+        Name = "K8S_main"
     }
 }
 
@@ -57,55 +57,23 @@ resource "aws_route_table" "r" {
     depends_on = ["aws_internet_gateway.gw"]
 
     tags {
-        Name = "TF_main"
+        Name = "K8S_main"
     }
 }
 
-resource "aws_route_table_association" "publicA" {
-    subnet_id = "${aws_subnet.publicA.id}"
+resource "aws_route_table_association" "public" {
+    subnet_id = "${aws_subnet.public.id}"
     route_table_id = "${aws_route_table.r.id}"
 }
 
-resource "aws_route_table_association" "publicB" {
-    subnet_id = "${aws_subnet.publicB.id}"
-    route_table_id = "${aws_route_table.r.id}"
-}
-
-resource "aws_route_table_association" "publicC" {
-    subnet_id = "${aws_subnet.publicC.id}"
-    route_table_id = "${aws_route_table.r.id}"
-}
-
-resource "aws_subnet" "publicA" {
+resource "aws_subnet" "public" {
     vpc_id = "${aws_vpc.main.id}"
     cidr_block = "10.0.100.0/24"
     availability_zone = "us-east-1a"
     map_public_ip_on_launch = true
 
     tags {
-        Name = "TF_PubSubnetA"
-    }
-}
-
-resource "aws_subnet" "publicB" {
-    vpc_id = "${aws_vpc.main.id}"
-    cidr_block = "10.0.101.0/24"
-    availability_zone = "us-east-1b"
-    map_public_ip_on_launch = true
-
-    tags {
-        Name = "TF_PubSubnetB"
-    }
-}
-
-resource "aws_subnet" "publicC" {
-    vpc_id = "${aws_vpc.main.id}"
-    cidr_block = "10.0.102.0/24"
-    availability_zone = "us-east-1c"
-    map_public_ip_on_launch = true
-
-    tags {
-        Name = "TF_PubSubnetC"
+        Name = "K8S_PubSubnet"
     }
 }
 
@@ -118,7 +86,7 @@ resource "aws_security_group" "kubernetes" {
       from_port = 22
       to_port = 22
       protocol = "tcp"
-      cidr_blocks = ${split(",", var.admin-cidr-blocks)}
+      cidr_blocks = "${split(",", var.admin-cidr-blocks)}"
   }
 
   ingress {
@@ -154,7 +122,7 @@ data "template_file" "worker-userdata" {
 
     vars {
         k8stoken = "${var.k8stoken}"
-        masterIP = "${aws_instance.k8s-master.private_ip}"
+        masterIP = "${aws_spot_instance_request.k8s-master.private_ip}"
     }
 }
 
@@ -168,14 +136,17 @@ data "aws_ami" "latest_ami" {
   owners      = ["099720109477"] # Ubuntu
 }
 
-resource "aws_instance" "k8s-master" {
+resource "aws_spot_instance_request" "k8s-master" {
   ami           = "${data.aws_ami.latest_ami.id}"
-  instance_type = "t2.medium"
-  subnet_id = "${aws_subnet.publicA.id}"
+  instance_type = "m1.small"
+  subnet_id = "${aws_subnet.public.id}"
   user_data = "${data.template_file.master-userdata.rendered}"
   key_name = "${var.k8s-ssh-key}"
-  associate_public_ip_address = true
+  iam_instance_profile   = "ECRReadOnly"
   vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
+  spot_price = "0.01"
+  valid_until = "9999-12-25T12:00:00Z"
+  wait_for_fulfillment = true
 
   depends_on = ["aws_internet_gateway.gw"]
 
@@ -184,34 +155,68 @@ resource "aws_instance" "k8s-master" {
   }
 }
 
-resource "aws_instance" "k8s-worker1" {
-  ami           = "${data.aws_ami.latest_ami.id}"
-  instance_type = "t2.medium"
-  subnet_id = "${aws_subnet.publicA.id}"
-  user_data = "${data.template_file.worker-userdata.rendered}"
-  key_name = "${var.k8s-ssh-key}"
-  associate_public_ip_address = true
-  vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
-
-  depends_on = ["aws_internet_gateway.gw"]
-
-  tags {
-      Name = "k8s-worker0"
-  }
+# Spot fleet for workers
+# This role grants the Spot fleet permission to terminate Spot instances on your behalf when you cancel its Spot fleet request using CancelSpotFleetRequests or when the Spot fleet request expires, if you set terminateInstancesWithExpiration.
+resource "aws_iam_policy_attachment" "fleet" {
+  name       = "k8s-fleet"
+  roles      = ["${aws_iam_role.fleet.name}"]
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetRole"
+}
+# This role allows tagging of spots
+resource "aws_iam_policy_attachment" "fleet-tagging" {
+  name       = "k8s-fleet-tagging"
+  roles      = ["${aws_iam_role.fleet.name}"]
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
 }
 
-resource "aws_instance" "k8s-worker2" {
-  ami           = "${data.aws_ami.latest_ami.id}"
-  instance_type = "t2.medium"
-  subnet_id = "${aws_subnet.publicA.id}"
-  user_data = "${data.template_file.worker-userdata.rendered}"
-  key_name = "${var.k8s-ssh-key}"
-  associate_public_ip_address = true
-  vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
+resource "aws_iam_role" "fleet" {
+  name = "k8s-fleet"
 
-  depends_on = ["aws_internet_gateway.gw"]
+  assume_role_policy = <<EOF
+{
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": [
+          "spotfleet.amazonaws.com",
+          "ec2.amazonaws.com"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
 
-  tags {
-      Name = "k8s-worker1"
+resource "aws_spot_fleet_request" "worker" {
+  iam_fleet_role                      = "${aws_iam_role.fleet.arn}"
+  target_capacity                     = "1"
+  terminate_instances_with_expiration = true
+  replace_unhealthy_instances         = true
+  excess_capacity_termination_policy  = "Default" # Terminate instances if the fleet is too big
+  valid_until                         = "9999-12-25T12:00:00Z"
+
+  launch_specification {
+    ami                    = "${data.aws_ami.latest_ami.id}"
+    instance_type          = "m1.small"
+    ebs_optimized          = false
+    weighted_capacity      = 1 # Says that this instance type has 1 CPU
+    spot_price             = "0.01"
+    subnet_id              = "${aws_subnet.public.id}"
+    vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
+    iam_instance_profile   = "ECRReadOnly"
+    key_name               = "${var.k8s-ssh-key}"
+    user_data              = "${data.template_file.worker-userdata.rendered}"
+    tags = "${
+      map(
+       "Name", "k8s-worker",
+      )
+    }"
   }
+  depends_on = ["aws_iam_policy_attachment.fleet"]
+}
 
