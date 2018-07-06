@@ -11,14 +11,17 @@ The terraform script builds out a new VPC in your account and a single subnet (t
 ### Run it!
 
 1. Clone the repo
-- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
-- Generate token: `python -c 'import random; print "%0x.%0x" % (random.SystemRandom().getrandbits(3*8), random.SystemRandom().getrandbits(8*8))' > token.txt`
-- Make an SSH key on us-east-1 from the AWS console
-- Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
-- Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
-- ssh to kube master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
-- Done!
+2. [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
+3. Generate token: `python -c 'import random; print "%0x.%0x" % (random.SystemRandom().getrandbits(3*8), random.SystemRandom().getrandbits(8*8))' > token.txt`
+4. Make an SSH key on us-east-1 from the AWS console
+5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
+6. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
+7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
+8. Done!
 
 ### TODO
+
 * Remove need ECRReadOnly Instance Profile to be pre-created
-* Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests.
+* Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests
+* Generally more flexibility and variables
+* Backups
