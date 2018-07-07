@@ -19,6 +19,12 @@ The terraform script builds out a new VPC in your account and a single subnet (t
 7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
 8. Done!
 
+Optional Variables:
+
+* `worker-count` - How many worker nodes to request via Spot Fleet (1 by default)
+* `region` - Which AWS region to use (us-east-1 by default)
+* `instance-type` - Which EC2 instance type to use (m1.small by default)
+
 ### TODO
 
 * Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests

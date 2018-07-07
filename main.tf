@@ -69,7 +69,7 @@ resource "aws_route_table_association" "public" {
 resource "aws_subnet" "public" {
     vpc_id = "${aws_vpc.main.id}"
     cidr_block = "10.0.100.0/24"
-    availability_zone = "us-east-1a"
+    availability_zone = "${var.region}a"
     map_public_ip_on_launch = true
 
     tags {
@@ -110,7 +110,7 @@ resource "aws_security_group" "kubernetes" {
 }
 
 data "template_file" "master-userdata" {
-    template = "${file("${var.master-userdata}")}"
+    template = "${file("master.sh")}"
 
     vars {
         k8stoken = "${var.k8stoken}"
@@ -118,7 +118,7 @@ data "template_file" "master-userdata" {
 }
 
 data "template_file" "worker-userdata" {
-    template = "${file("${var.worker-userdata}")}"
+    template = "${file("worker.sh")}"
 
     vars {
         k8stoken = "${var.k8stoken}"
@@ -169,7 +169,7 @@ resource "aws_iam_instance_profile" "profile" {
 
 resource "aws_spot_instance_request" "k8s-master" {
   ami           = "${data.aws_ami.latest_ami.id}"
-  instance_type = "m1.small"
+  instance_type = "${var.instance-type}"
   subnet_id = "${aws_subnet.public.id}"
   user_data = "${data.template_file.master-userdata.rendered}"
   key_name = "${var.k8s-ssh-key}"
@@ -225,7 +225,7 @@ EOF
 
 resource "aws_spot_fleet_request" "worker" {
   iam_fleet_role                      = "${aws_iam_role.fleet.arn}"
-  target_capacity                     = "1"
+  target_capacity                     = "${var.worker-count}"
   terminate_instances_with_expiration = true
   replace_unhealthy_instances         = true
   excess_capacity_termination_policy  = "Default" # Terminate instances if the fleet is too big
@@ -233,7 +233,7 @@ resource "aws_spot_fleet_request" "worker" {
 
   launch_specification {
     ami                    = "${data.aws_ami.latest_ami.id}"
-    instance_type          = "m1.small"
+    instance_type          = "${var.instance-type}"
     ebs_optimized          = false
     weighted_capacity      = 1 # Says that this instance type has 1 CPU
     spot_price             = "0.01"

@@ -36,7 +36,6 @@ variable "secret_key" {
 variable "k8s-ssh-key" {}
 
 variable "admin-cidr-blocks" {
-  default     = ""
   description = "A comma separated list of CIDR blocks to allow SSH connections from."
 }
 
@@ -44,10 +43,12 @@ variable "region" {
   default = "us-east-1"
 }
 
-variable "master-userdata" {
-    default = "master.sh"
+variable "instance-type" {
+  default = "m1.small"
+  description = "Which EC2 instance type to use"
 }
 
-variable "worker-userdata" {
-    default = "worker.sh"
+variable "worker-count" {
+  default = "1"
+  description = "How many worker nodes to request via Spot Fleet"
 }
