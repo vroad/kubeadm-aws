@@ -24,9 +24,11 @@ Optional Variables:
 * `worker-count` - How many worker nodes to request via Spot Fleet (1 by default)
 * `region` - Which AWS region to use (us-east-1 by default)
 * `instance-type` - Which EC2 instance type to use (m1.small by default)
+* `cluster-name` - Used for naming the created AWS resources (k8s by default)
 
 ### TODO
 
-* Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests
-* Generally more flexibility and variables
-* Backups
+* Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests..
+* Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
+* Upgrade to a newer OS
+* Backup and recovery in the event of inevitable master termination

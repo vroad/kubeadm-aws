@@ -35,7 +35,7 @@ resource "aws_vpc" "main" {
     enable_dns_hostnames = true
 
     tags {
-        Name = "K8S_VPC"
+        Name = "${var.cluster-name}"
     }
 }
 
@@ -43,7 +43,7 @@ resource "aws_internet_gateway" "gw" {
     vpc_id = "${aws_vpc.main.id}"
 
     tags {
-        Name = "K8S_main"
+        Name = "${var.cluster-name}"
     }
 }
 
@@ -57,7 +57,7 @@ resource "aws_route_table" "r" {
     depends_on = ["aws_internet_gateway.gw"]
 
     tags {
-        Name = "K8S_main"
+        Name = "${var.cluster-name}"
     }
 }
 
@@ -73,40 +73,48 @@ resource "aws_subnet" "public" {
     map_public_ip_on_launch = true
 
     tags {
-        Name = "K8S_PubSubnet"
+        Name = "${var.cluster-name}"
     }
 }
 
 resource "aws_security_group" "kubernetes" {
-  name = "kubernetes"
+  name = "${var.cluster-name}"
   description = "Allow inbound ssh traffic"
   vpc_id = "${aws_vpc.main.id}"
 
-  ingress {
-      from_port = 22
-      to_port = 22
-      protocol = "tcp"
-      cidr_blocks = "${split(",", var.admin-cidr-blocks)}"
-  }
-
-  ingress {
-      from_port = 0
-      to_port = 0
-      protocol = "-1"
-      cidr_blocks = ["10.0.0.0/16"]
-  }
-
-
-  egress {
-      from_port = 0
-      to_port = 0
-      protocol = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags {
-    Name = "kubernetes"
+    Name = "${var.cluster-name}"
   }
+}
+
+resource "aws_security_group_rule" "allow_all_from_self" {
+  type            = "ingress"
+  from_port       = 0
+  to_port         = 0
+  protocol        = "-1"
+  source_security_group_id = "${aws_security_group.kubernetes.id}"
+
+  security_group_id = "${aws_security_group.kubernetes.id}"
+}
+
+resource "aws_security_group_rule" "allow_ssh_from_admin" {
+  type            = "ingress"
+  from_port       = 22
+  to_port         = 22
+  protocol        = "tcp"
+  cidr_blocks     = "${split(",", var.admin-cidr-blocks)}"
+
+  security_group_id = "${aws_security_group.kubernetes.id}"
+}
+
+resource "aws_security_group_rule" "allow_k8s_from_admin" {
+  type            = "ingress"
+  from_port       = 6443
+  to_port         = 6443
+  protocol        = "tcp"
+  cidr_blocks     = "${split(",", var.admin-cidr-blocks)}"
+
+  security_group_id = "${aws_security_group.kubernetes.id}"
 }
 
 data "template_file" "master-userdata" {
@@ -137,7 +145,7 @@ data "aws_ami" "latest_ami" {
 }
 
 resource "aws_iam_role" "role" {
-  name = "k8s-node"
+  name = "${var.cluster-name}"
   path = "/"
 
   assume_role_policy = <<EOF
@@ -163,7 +171,7 @@ resource "aws_iam_role_policy_attachment" "policy" {
 }
 
 resource "aws_iam_instance_profile" "profile" {
-  name = "k8s-node"
+  name = "${var.cluster-name}"
   role = "${aws_iam_role.role.name}"
 }
 
@@ -182,26 +190,26 @@ resource "aws_spot_instance_request" "k8s-master" {
   depends_on = ["aws_internet_gateway.gw"]
 
   tags {
-      Name = "k8s-master"
+      Name = "${var.cluster-name}-master"
   }
 }
 
 # Spot fleet for workers
 # This role grants the Spot fleet permission to terminate Spot instances on your behalf when you cancel its Spot fleet request using CancelSpotFleetRequests or when the Spot fleet request expires, if you set terminateInstancesWithExpiration.
 resource "aws_iam_policy_attachment" "fleet" {
-  name       = "k8s-fleet"
+  name       = "${var.cluster-name}-spot-fleet"
   roles      = ["${aws_iam_role.fleet.name}"]
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetRole"
 }
 # This role allows tagging of spots
 resource "aws_iam_policy_attachment" "fleet-tagging" {
-  name       = "k8s-fleet-tagging"
+  name       = "${var.cluster-name}-spot-fleet-tagging"
   roles      = ["${aws_iam_role.fleet.name}"]
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
 }
 
 resource "aws_iam_role" "fleet" {
-  name = "k8s-fleet"
+  name = "${var.cluster-name}-spot-fleet"
 
   assume_role_policy = <<EOF
 {
@@ -244,7 +252,7 @@ resource "aws_spot_fleet_request" "worker" {
     user_data              = "${data.template_file.worker-userdata.rendered}"
     tags = "${
       map(
-       "Name", "k8s-worker",
+       "Name", "${var.cluster-name}-worker",
       )
     }"
   }

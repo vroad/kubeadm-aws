@@ -25,6 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 
 variable "k8stoken" {}
 
+variable "cluster-name" {
+  default = "k8s"
+  description = "Controls the naming of the AWS resources"
+}
+
 variable "access_key" {
   default = ""
 }
