@@ -21,7 +21,6 @@ The terraform script builds out a new VPC in your account and a single subnet (t
 
 ### TODO
 
-* Remove need ECRReadOnly Instance Profile to be pre-created
 * Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests
 * Generally more flexibility and variables
 * Backups

@@ -136,13 +136,44 @@ data "aws_ami" "latest_ami" {
   owners      = ["099720109477"] # Ubuntu
 }
 
+resource "aws_iam_role" "role" {
+  name = "k8s-node"
+  path = "/"
+
+  assume_role_policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "sts:AssumeRole",
+            "Principal": {
+               "Service": "ec2.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": ""
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "policy" {
+    role       = "${aws_iam_role.role.name}"
+    policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_instance_profile" "profile" {
+  name = "k8s-node"
+  role = "${aws_iam_role.role.name}"
+}
+
 resource "aws_spot_instance_request" "k8s-master" {
   ami           = "${data.aws_ami.latest_ami.id}"
   instance_type = "m1.small"
   subnet_id = "${aws_subnet.public.id}"
   user_data = "${data.template_file.master-userdata.rendered}"
   key_name = "${var.k8s-ssh-key}"
-  iam_instance_profile   = "ECRReadOnly"
+  iam_instance_profile   = "${aws_iam_instance_profile.profile.name}"
   vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
   spot_price = "0.01"
   valid_until = "9999-12-25T12:00:00Z"
@@ -208,7 +239,7 @@ resource "aws_spot_fleet_request" "worker" {
     spot_price             = "0.01"
     subnet_id              = "${aws_subnet.public.id}"
     vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
-    iam_instance_profile   = "ECRReadOnly"
+    iam_instance_profile   = "${aws_iam_instance_profile.profile.name}"
     key_name               = "${var.k8s-ssh-key}"
     user_data              = "${data.template_file.worker-userdata.rendered}"
     tags = "${
