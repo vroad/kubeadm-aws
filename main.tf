@@ -31,50 +31,51 @@ provider "aws" {
 }
 
 resource "aws_vpc" "main" {
-    cidr_block = "10.0.0.0/16"
-    enable_dns_hostnames = true
+  cidr_block = "10.0.0.0/16"
+  enable_dns_hostnames = true
 
-    tags {
-        Name = "${var.cluster-name}"
-    }
+  tags {
+    Name = "${var.cluster-name}"
+  }
 }
 
 resource "aws_internet_gateway" "gw" {
-    vpc_id = "${aws_vpc.main.id}"
+  vpc_id = "${aws_vpc.main.id}"
 
-    tags {
-        Name = "${var.cluster-name}"
-   }
+  tags {
+    Name = "${var.cluster-name}"
+  }
 }
 
 resource "aws_route_table" "r" {
-    vpc_id = "${aws_vpc.main.id}"
-    route {
-        cidr_block = "0.0.0.0/0"
-        gateway_id = "${aws_internet_gateway.gw.id}"
-    }
+  vpc_id = "${aws_vpc.main.id}"
 
-    depends_on = ["aws_internet_gateway.gw"]
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.gw.id}"
+  }
 
-    tags {
-        Name = "${var.cluster-name}"
-    }
+  depends_on = ["aws_internet_gateway.gw"]
+
+  tags {
+    Name = "${var.cluster-name}"
+  }
 }
 
 resource "aws_route_table_association" "public" {
-    subnet_id = "${aws_subnet.public.id}"
-    route_table_id = "${aws_route_table.r.id}"
+  subnet_id = "${aws_subnet.public.id}"
+  route_table_id = "${aws_route_table.r.id}"
 }
 
 resource "aws_subnet" "public" {
-    vpc_id = "${aws_vpc.main.id}"
-    cidr_block = "10.0.100.0/24"
-    availability_zone = "${var.region}a"
-    map_public_ip_on_launch = true
+  vpc_id = "${aws_vpc.main.id}"
+  cidr_block = "10.0.100.0/24"
+  availability_zone = "${var.region}a"
+  map_public_ip_on_launch = true
 
-    tags {
-        Name = "${var.cluster-name}"
-    }
+  tags {
+    Name = "${var.cluster-name}"
+  }
 }
 
 resource "aws_security_group" "kubernetes" {
@@ -117,7 +118,7 @@ resource "aws_security_group_rule" "allow_k8s_from_admin" {
   security_group_id = "${aws_security_group.kubernetes.id}"
 }
 
-resource "aws_security_group_rule" "allow_all_fout" {
+resource "aws_security_group_rule" "allow_all_out" {
   type            = "egress"
   from_port       = 0
   to_port         = 0
@@ -128,20 +129,21 @@ resource "aws_security_group_rule" "allow_all_fout" {
 }
 
 data "template_file" "master-userdata" {
-    template = "${file("master.sh")}"
+  template = "${file("master.sh")}"
 
-    vars {
-        k8stoken = "${var.k8stoken}"
-    }
+  vars {
+    k8stoken = "${var.k8stoken}"
+    clustername = "${var.cluster-name}"
+  }
 }
 
 data "template_file" "worker-userdata" {
-    template = "${file("worker.sh")}"
+  template = "${file("worker.sh")}"
 
-    vars {
-        k8stoken = "${var.k8stoken}"
-        masterIP = "${aws_spot_instance_request.k8s-master.private_ip}"
-    }
+  vars {
+    k8stoken = "${var.k8stoken}"
+    masterIP = "${aws_spot_instance_request.k8s-master.private_ip}"
+  }
 }
 
 data "aws_ami" "latest_ami" {
@@ -177,8 +179,33 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "policy" {
-    role       = "${aws_iam_role.role.name}"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_policy" "create-tags-policy" {
+  name        = "${var.cluster-name}-create-tags-policy"
+  path        = "/"
+  description = "Polcy for ${var.cluster-name} cluster to allow setting EC2 tags"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": "ec2:CreateTags",
+            "Resource": "arn:aws:ec2:*:*:instance/*"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "create-tags-policy" {
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "${aws_iam_policy.create-tags-policy.arn}"
 }
 
 resource "aws_iam_instance_profile" "profile" {
@@ -201,7 +228,7 @@ resource "aws_spot_instance_request" "k8s-master" {
   depends_on = ["aws_internet_gateway.gw"]
 
   tags {
-      Name = "${var.cluster-name}-master"
+    Name = "${var.cluster-name}-master"
   }
 }
 

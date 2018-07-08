@@ -28,7 +28,5 @@ Optional Variables:
 
 ### TODO
 
-* Fix lack of tags on master nodes. Seems to be an issue with plain AWS spot requests..
 * Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
-* Upgrade to a newer OS
 * Backup and recovery in the event of inevitable master termination

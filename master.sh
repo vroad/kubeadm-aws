@@ -1,8 +1,8 @@
 #!/bin/bash -v
 
 # Disable pointless daemons
-systemctl stop snapd snapd.socket lxcfs
-systemctl disable snapd snapd.socket lxcfs
+systemctl stop snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent
+systemctl disable snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent
 
 # Disable swap to make K8S happy
 swapoff -a
@@ -16,7 +16,7 @@ echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.l
 echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 
 apt-get update
-apt-get install -y kubelet kubeadm kubectl docker-ce
+DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl docker-ce
 
 # Point Docker at big ephemeral drive and turn on log rotation
 mkdir /mnt/docker
@@ -49,3 +49,10 @@ su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0
 
 # Allow pod scheduling on the master (no recommended but we're doing it anyway :D)
 su -c 'kubectl taint nodes --all node-role.kubernetes.io/master-' ubuntu
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y awscli
+
+REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
+INSTANCE_ID=$(ec2metadata --instance-id)
+aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master"
+
