@@ -1,16 +1,19 @@
 #!/bin/bash -v
+
+# Disable pointless daemons
+systemctl stop snapd snapd.socket lxcfs
+systemctl disable snapd snapd.socket lxcfs
+
+# Disable swap to make K8S happy
 swapoff -a
 sed -i '/swap/d' /etc/fstab
 
 # Install K8S, kubeadm and Docker
-apt-get update
-apt-get dist-upgrade -y
-
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
-add-apt-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
-add-apt-repository "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable"
+echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 
 apt-get update
 apt-get install -y kubelet kubeadm kubectl docker-ce

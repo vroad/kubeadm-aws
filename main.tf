@@ -44,7 +44,7 @@ resource "aws_internet_gateway" "gw" {
 
     tags {
         Name = "${var.cluster-name}"
-    }
+   }
 }
 
 resource "aws_route_table" "r" {
@@ -117,6 +117,16 @@ resource "aws_security_group_rule" "allow_k8s_from_admin" {
   security_group_id = "${aws_security_group.kubernetes.id}"
 }
 
+resource "aws_security_group_rule" "allow_all_fout" {
+  type            = "egress"
+  from_port       = 0
+  to_port         = 0
+  protocol        = "-1"
+  cidr_blocks     = ["0.0.0.0/0"]
+
+  security_group_id = "${aws_security_group.kubernetes.id}"
+}
+
 data "template_file" "master-userdata" {
     template = "${file("master.sh")}"
 
@@ -137,7 +147,8 @@ data "template_file" "worker-userdata" {
 data "aws_ami" "latest_ami" {
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-instance/ubuntu-xenial-16.04-amd64-server-*"]
+    values = ["ubuntu-minimal/images-testing/hvm-instance/ubuntu-bionic-daily-amd64-minimal-*"]
+    # There seem to be only testing minimal images. Check for released versions of ubuntu-minimal/images/hvm-instance/ubuntu-bionic-18.04-amd64-minimal
   }
 
   most_recent = true
