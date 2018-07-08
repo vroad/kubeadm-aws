@@ -50,8 +50,8 @@ su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0
 # Allow pod scheduling on the master (no recommended but we're doing it anyway :D)
 su -c 'kubectl taint nodes --all node-role.kubernetes.io/master-' ubuntu
 
+# Work around the fact spot requests can't tag their instances
 DEBIAN_FRONTEND=noninteractive apt-get install -y awscli
-
 REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
 INSTANCE_ID=$(ec2metadata --instance-id)
 aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}"
