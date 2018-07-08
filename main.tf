@@ -36,6 +36,7 @@ resource "aws_vpc" "main" {
 
   tags {
     Name = "${var.cluster-name}"
+    Environment = "${var.cluster-name}"
   }
 }
 
@@ -44,6 +45,7 @@ resource "aws_internet_gateway" "gw" {
 
   tags {
     Name = "${var.cluster-name}"
+    Environment = "${var.cluster-name}"
   }
 }
 
@@ -59,6 +61,7 @@ resource "aws_route_table" "r" {
 
   tags {
     Name = "${var.cluster-name}"
+    Environment = "${var.cluster-name}"
   }
 }
 
@@ -75,6 +78,7 @@ resource "aws_subnet" "public" {
 
   tags {
     Name = "${var.cluster-name}"
+    Environment = "${var.cluster-name}"
   }
 }
 
@@ -85,6 +89,7 @@ resource "aws_security_group" "kubernetes" {
 
   tags {
     Name = "${var.cluster-name}"
+    Environment = "${var.cluster-name}"
   }
 }
 
@@ -158,7 +163,7 @@ data "aws_ami" "latest_ami" {
 }
 
 resource "aws_iam_role" "role" {
-  name = "${var.cluster-name}"
+  name = "${var.cluster-name}-instance-role"
   path = "/"
 
   assume_role_policy = <<EOF
@@ -209,7 +214,7 @@ resource "aws_iam_role_policy_attachment" "create-tags-policy" {
 }
 
 resource "aws_iam_instance_profile" "profile" {
-  name = "${var.cluster-name}"
+  name = "${var.cluster-name}-instance-profile"
   role = "${aws_iam_role.role.name}"
 }
 
@@ -229,6 +234,7 @@ resource "aws_spot_instance_request" "k8s-master" {
 
   tags {
     Name = "${var.cluster-name}-master"
+    Environment = "${var.cluster-name}"
   }
 }
 
@@ -291,6 +297,7 @@ resource "aws_spot_fleet_request" "worker" {
     tags = "${
       map(
        "Name", "${var.cluster-name}-worker",
+       "Environment", "${var.cluster-name}",
       )
     }"
   }

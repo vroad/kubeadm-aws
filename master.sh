@@ -54,5 +54,5 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y awscli
 
 REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
 INSTANCE_ID=$(ec2metadata --instance-id)
-aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master"
+aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}"
 
