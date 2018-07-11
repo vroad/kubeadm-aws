@@ -133,12 +133,22 @@ resource "aws_security_group_rule" "allow_all_out" {
   security_group_id = "${aws_security_group.kubernetes.id}"
 }
 
+resource "aws_s3_bucket" "backup-bucket" {
+  bucket_prefix   = "${var.cluster-name}"
+
+  tags {
+    Name = "${var.cluster-name}-backup"
+    Environment = "${var.cluster-name}"
+  }
+}
+
 data "template_file" "master-userdata" {
   template = "${file("master.sh")}"
 
   vars {
     k8stoken = "${var.k8stoken}"
     clustername = "${var.cluster-name}"
+    s3bucket = "${aws_s3_bucket.backup-bucket.id}"
   }
 }
 
@@ -147,7 +157,7 @@ data "template_file" "worker-userdata" {
 
   vars {
     k8stoken = "${var.k8stoken}"
-    masterIP = "${aws_spot_instance_request.k8s-master.private_ip}"
+    masterIP = "10.0.100.4"
   }
 }
 
@@ -175,8 +185,7 @@ resource "aws_iam_role" "role" {
             "Principal": {
                "Service": "ec2.amazonaws.com"
             },
-            "Effect": "Allow",
-            "Sid": ""
+            "Effect": "Allow"
         }
     ]
 }
@@ -198,10 +207,36 @@ resource "aws_iam_policy" "create-tags-policy" {
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "",
             "Effect": "Allow",
             "Action": "ec2:CreateTags",
             "Resource": "arn:aws:ec2:*:*:instance/*"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_policy" "backup-bucket-policy" {
+  name        = "${var.cluster-name}-backup-bucket-policy"
+  path        = "/"
+  description = "Polcy for ${var.cluster-name} cluster to allow access the the Backup S3 Bucket"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["${aws_s3_bucket.backup-bucket.arn}"]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject"
+            ],
+            "Resource": ["${aws_s3_bucket.backup-bucket.arn}/*"]
         }
     ]
 }
@@ -213,12 +248,17 @@ resource "aws_iam_role_policy_attachment" "create-tags-policy" {
   policy_arn = "${aws_iam_policy.create-tags-policy.arn}"
 }
 
+resource "aws_iam_role_policy_attachment" "backup-bucket-policy" {
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "${aws_iam_policy.backup-bucket-policy.arn}"
+}
+
 resource "aws_iam_instance_profile" "profile" {
   name = "${var.cluster-name}-instance-profile"
   role = "${aws_iam_role.role.name}"
 }
 
-resource "aws_spot_instance_request" "k8s-master" {
+resource "aws_spot_instance_request" "master" {
   ami           = "${data.aws_ami.latest_ami.id}"
   instance_type = "${var.instance-type}"
   subnet_id = "${aws_subnet.public.id}"
@@ -229,6 +269,7 @@ resource "aws_spot_instance_request" "k8s-master" {
   spot_price = "0.01"
   valid_until = "9999-12-25T12:00:00Z"
   wait_for_fulfillment = true
+  private_ip = "10.0.100.4"
 
   depends_on = ["aws_internet_gateway.gw"]
 
@@ -260,7 +301,6 @@ resource "aws_iam_role" "fleet" {
   "Version": "2008-10-17",
   "Statement": [
     {
-      "Sid": "",
       "Effect": "Allow",
       "Principal": {
         "Service": [
@@ -301,6 +341,6 @@ resource "aws_spot_fleet_request" "worker" {
       )
     }"
   }
-  depends_on = ["aws_iam_policy_attachment.fleet"]
+  depends_on = ["aws_iam_policy_attachment.fleet", "aws_spot_instance_request.master"]
 }
 

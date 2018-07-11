@@ -37,7 +37,7 @@ mkdir /mnt/kubelet
 echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet"' > /etc/default/kubelet
 
 # Set up the cluster
-kubeadm init --token=${k8stoken} --pod-network-cidr=10.244.0.0/16
+kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel like the above cidr setting)
 echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
@@ -56,3 +56,5 @@ REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
 INSTANCE_ID=$(ec2metadata --instance-id)
 aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}"
 
+# Back up etcd to s3
+echo "*/5 * * * * root aws s3 sync --delete /var/lib/etcd s3://${s3bucket}/" > /etc/cron.d/etcd-backup
