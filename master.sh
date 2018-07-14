@@ -56,5 +56,22 @@ REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
 INSTANCE_ID=$(ec2metadata --instance-id)
 aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}"
 
-# Back up etcd to s3
-echo "*/5 * * * * root aws s3 sync --delete /var/lib/etcd s3://${s3bucket}/" > /etc/cron.d/etcd-backup
+# One time backup of kubernetes directory
+aws s3 cp /etc/kubernetes/pki/ca.crt s3://${s3bucket}/pki/$INSTANCE_ID/
+aws s3 cp /etc/kubernetes/pki/ca.key s3://${s3bucket}/pki/$INSTANCE_ID/
+
+# Install etcdctl for the version of etcd we're running
+ETCD_VERSION=$(cat /etc/kubernetes/manifests/etcd.yaml | grep image: | cut -d':' -f3)
+wget https://github.com/coreos/etcd/releases/download/v$ETCD_VERSION/etcd-v$ETCD_VERSION-linux-amd64.tar.gz
+tar xvf etcd-v3.2.18-linux-amd64.tar.gz
+mv etcd-v3.2.18-linux-amd64/etcdctl /usr/local/bin/
+rm -rf etcd*
+
+# Back up etcd to s3 every hour. The lifecycle policy in terraform will keep 7 days to save us doing that logic here.
+cat <<EOF > /usr/local/bin/backup-etcd.sh
+#!/bin/bash
+ETCDCTL_API=3 /usr/local/bin/etcdctl --cacert='/etc/kubernetes/pki/etcd/ca.crt' --cert='/etc/kubernetes/pki/etcd/peer.crt' --key='/etc/kubernetes/pki/etcd/peer.key' snapshot save etcd-snapshot.db
+aws s3 cp etcd-snapshot.db s3://${s3bucket}/etcd-backups/$INSTANCE_ID/etcd-snapshot-\$(date -Iseconds).db
+EOF
+
+echo "0 * * * * root bash /usr/local/bin/backup-etcd.sh" > /etc/cron.d/backup-etcd

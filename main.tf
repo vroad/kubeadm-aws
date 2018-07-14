@@ -140,6 +140,16 @@ resource "aws_s3_bucket" "backup-bucket" {
     Name = "${var.cluster-name}-backup"
     Environment = "${var.cluster-name}"
   }
+
+  lifecycle_rule {
+    id      = "etcd-backups"
+    prefix  = "etcd-backups/"
+    enabled = true
+
+    expiration {
+      days = 7
+    }
+  }
 }
 
 data "template_file" "master-userdata" {
