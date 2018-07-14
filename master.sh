@@ -67,11 +67,11 @@ tar xvf etcd-v3.2.18-linux-amd64.tar.gz
 mv etcd-v3.2.18-linux-amd64/etcdctl /usr/local/bin/
 rm -rf etcd*
 
-# Back up etcd to s3 every hour. The lifecycle policy in terraform will keep 7 days to save us doing that logic here.
+# Back up etcd to s3 every 15 minutes. The lifecycle policy in terraform will keep 7 days to save us doing that logic here.
 cat <<EOF > /usr/local/bin/backup-etcd.sh
 #!/bin/bash
 ETCDCTL_API=3 /usr/local/bin/etcdctl --cacert='/etc/kubernetes/pki/etcd/ca.crt' --cert='/etc/kubernetes/pki/etcd/peer.crt' --key='/etc/kubernetes/pki/etcd/peer.key' snapshot save etcd-snapshot.db
 aws s3 cp etcd-snapshot.db s3://${s3bucket}/etcd-backups/$INSTANCE_ID/etcd-snapshot-\$(date -Iseconds).db
 EOF
 
-echo "0 * * * * root bash /usr/local/bin/backup-etcd.sh" > /etc/cron.d/backup-etcd
+echo "*/15 * * * * root bash /usr/local/bin/backup-etcd.sh" > /etc/cron.d/backup-etcd
