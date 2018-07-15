@@ -1,12 +1,14 @@
 ## Really cheap Kubernetes cluster on AWS with kubeadm
 
-This is a fork of a quick start by UPMC Enterprises. I've adapted (and possibly improved it) to use the cheapest available spot instances to run a 1 master, 1 worker cluster for somewhere around $6 a month. It uses m1.small spot instances and the free ephemeral storage they come with instead of EBS volumes.
+This is a fork of a quick start by UPMC Enterprises. I've adapted (and possibly improved it) to use the cheapest available spot instances amongst other things, to make a really low cost cluster possible. For example you can run a 1 master, 1 worker cluster for somewhere around $6 a month. It uses m1.small spot instances and the free ephemeral storage they come with instead of EBS volumes.
 
-### How it works
+Current features:
 
-The terraform script builds out a new VPC in your account and a single subnet (to avoid cross AZ bandwidth charges). It will also provision an internet gateway and setup a routing table to allow internet access.
+* Completely automated provisioning through Terraform of a single master cluster.
+* Variables for many things including number of workers (requests through spot fleet) and EC2 instance type.
+* Automatic backup and recovery. So if your master gets terminated, when the replacement is provisioned by AWS it will pick up where the old one left off without you doing anything. 😁
 
-#### _NOTE: Really really don't use this in production!_
+#### _NOTE: Really really don't use this in production! However in theory the reliability should be quite good._
 
 ### Run it!
 
@@ -30,3 +32,6 @@ Optional Variables:
 
 * Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
 * EBS persistent volumes including adding the necessary permissions to the instance profile.
+* Make backup/recovery feature optional.
+* Make the Kubernetes version a variable rather than just grabbing the latest.
+
