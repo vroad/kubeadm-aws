@@ -29,4 +29,4 @@ Optional Variables:
 ### TODO
 
 * Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
-* Backup and recovery in the event of inevitable master termination
+* EBS persistent volumes including adding the necessary permissions to the instance profile.

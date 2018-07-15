@@ -16,7 +16,14 @@ echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.l
 echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl docker-ce
+DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl docker-ce awscli jq
+
+# Install etcdctl for the version of etcd we're running
+ETCD_VERSION=$(kubeadm config images list | grep etcd | cut -d':' -f2)
+wget https://github.com/coreos/etcd/releases/download/v$ETCD_VERSION/etcd-v$ETCD_VERSION-linux-amd64.tar.gz
+tar xvf etcd-v3.2.18-linux-amd64.tar.gz
+mv etcd-v3.2.18-linux-amd64/etcdctl /usr/local/bin/
+rm -rf etcd*
 
 # Point Docker at big ephemeral drive and turn on log rotation
 mkdir /mnt/docker
@@ -36,8 +43,32 @@ systemctl restart docker
 mkdir /mnt/kubelet
 echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet"' > /etc/default/kubelet
 
-# Set up the cluster
-kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16
+# Check if there is an etcd backup on the s3 bucket and restore from it if there is
+if [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc -l) -ne 0 ]; then
+  echo "Found existing etcd backup. Restoring from it instead of starting from fresh."
+  latest_backup=$(aws s3api list-objects --bucket ${s3bucket} --prefix etcd-backups --query 'reverse(sort_by(Contents,&LastModified))[0]' | jq -rc .Key)
+
+  echo "Downloading latest etcd backup"
+  aws s3 cp s3://${s3bucket}/$latest_backup etcd-snapshot.db
+  old_instance_id=$(echo $latest_backup | cut -d'/' -f2)
+
+  echo "Downloading kubernetes ca cert and key backup"
+  aws s3 cp s3://${s3bucket}/pki/$old_instance_id/ca.crt /etc/kubernetes/pki/ca.crt
+  chmod 644 /etc/kubernetes/pki/ca.crt
+  aws s3 cp s3://${s3bucket}/pki/$old_instance_id/ca.key /etc/kubernetes/pki/ca.key
+  chmod 600 /etc/kubernetes/pki/ca.key
+
+  echo "Restoring downloaded etcd backup"
+  ETCDCTL_API=3 /usr/local/bin/etcdctl snapshot restore etcd-snapshot.db
+  mkdir -p /var/lib/etcd
+  mv default.etcd/member /var/lib/etcd/
+
+  echo "Running kubeadm init"
+  kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16
+else
+  echo "Running kubeadm init"
+  kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16
+fi
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel like the above cidr setting)
 echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
@@ -51,7 +82,6 @@ su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0
 su -c 'kubectl taint nodes --all node-role.kubernetes.io/master-' ubuntu
 
 # Work around the fact spot requests can't tag their instances
-DEBIAN_FRONTEND=noninteractive apt-get install -y awscli
 REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
 INSTANCE_ID=$(ec2metadata --instance-id)
 aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}"
@@ -59,13 +89,6 @@ aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,V
 # One time backup of kubernetes directory
 aws s3 cp /etc/kubernetes/pki/ca.crt s3://${s3bucket}/pki/$INSTANCE_ID/
 aws s3 cp /etc/kubernetes/pki/ca.key s3://${s3bucket}/pki/$INSTANCE_ID/
-
-# Install etcdctl for the version of etcd we're running
-ETCD_VERSION=$(cat /etc/kubernetes/manifests/etcd.yaml | grep image: | cut -d':' -f3)
-wget https://github.com/coreos/etcd/releases/download/v$ETCD_VERSION/etcd-v$ETCD_VERSION-linux-amd64.tar.gz
-tar xvf etcd-v3.2.18-linux-amd64.tar.gz
-mv etcd-v3.2.18-linux-amd64/etcdctl /usr/local/bin/
-rm -rf etcd*
 
 # Back up etcd to s3 every 15 minutes. The lifecycle policy in terraform will keep 7 days to save us doing that logic here.
 cat <<EOF > /usr/local/bin/backup-etcd.sh
