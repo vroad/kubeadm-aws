@@ -134,7 +134,9 @@ resource "aws_security_group_rule" "allow_all_out" {
 }
 
 resource "aws_s3_bucket" "backup-bucket" {
+  count           = "${var.backup-enabled}"
   bucket_prefix   = "${var.cluster-name}"
+  force_destroy   = "true"
 
   tags {
     Name = "${var.cluster-name}-backup"
@@ -158,7 +160,7 @@ data "template_file" "master-userdata" {
   vars {
     k8stoken = "${var.k8stoken}"
     clustername = "${var.cluster-name}"
-    s3bucket = "${aws_s3_bucket.backup-bucket.id}"
+    s3bucket = "${(var.backup-enabled == "1" ? aws_s3_bucket.backup-bucket.id : "")}"
   }
 }
 
@@ -227,6 +229,7 @@ EOF
 }
 
 resource "aws_iam_policy" "backup-bucket-policy" {
+  count       = "${var.backup-enabled}"
   name        = "${var.cluster-name}-backup-bucket-policy"
   path        = "/"
   description = "Polcy for ${var.cluster-name} cluster to allow access the the Backup S3 Bucket"
@@ -259,6 +262,7 @@ resource "aws_iam_role_policy_attachment" "create-tags-policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "backup-bucket-policy" {
+  count      = "${var.backup-enabled}"
   role       = "${aws_iam_role.role.name}"
   policy_arn = "${aws_iam_policy.backup-bucket-policy.arn}"
 }

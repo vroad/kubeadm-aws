@@ -57,3 +57,8 @@ variable "worker-count" {
   default = "1"
   description = "How many worker nodes to request via Spot Fleet"
 }
+
+variable "backup-enabled" {
+  default = "1"
+  description = "Whether or not the automatic S3 backup should be enabled. (1 for enabled, 0 for disabled)"
+}

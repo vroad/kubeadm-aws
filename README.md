@@ -27,11 +27,14 @@ Optional Variables:
 * `region` - Which AWS region to use (us-east-1 by default)
 * `instance-type` - Which EC2 instance type to use (m1.small by default)
 * `cluster-name` - Used for naming the created AWS resources (k8s by default)
+* `backup-enabled` - Set to "0" to disable the automatic backups and creation of the S3 bucket ("1" by default)
 
 ### TODO
 
 * Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
+* Improve security: Leaving the token valid forever probably isn't the best idea.
 * EBS persistent volumes including adding the necessary permissions to the instance profile.
-* Make backup/recovery feature optional.
+* Alerting about when hosts are terminated.
+* General logging and monitoring of Kubernetes and running apps.
 * Make the Kubernetes version a variable rather than just grabbing the latest.
 
