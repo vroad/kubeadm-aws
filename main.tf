@@ -228,11 +228,16 @@ resource "aws_iam_policy" "create-tags-policy" {
 EOF
 }
 
+resource "aws_iam_role_policy_attachment" "create-tags-policy" {
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "${aws_iam_policy.create-tags-policy.arn}"
+}
+
 resource "aws_iam_policy" "backup-bucket-policy" {
   count       = "${var.backup-enabled}"
   name        = "${var.cluster-name}-backup-bucket-policy"
   path        = "/"
-  description = "Polcy for ${var.cluster-name} cluster to allow access the the Backup S3 Bucket"
+  description = "Polcy for ${var.cluster-name} cluster to allow access to the Backup S3 Bucket"
 
   policy = <<EOF
 {
@@ -256,15 +261,36 @@ resource "aws_iam_policy" "backup-bucket-policy" {
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "create-tags-policy" {
-  role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.create-tags-policy.arn}"
-}
-
 resource "aws_iam_role_policy_attachment" "backup-bucket-policy" {
   count      = "${var.backup-enabled}"
   role       = "${aws_iam_role.role.name}"
   policy_arn = "${aws_iam_policy.backup-bucket-policy.arn}"
+}
+
+resource "aws_iam_policy" "route53-policy" {
+  count       = "${var.external-dns-enabled}"
+  name        = "${var.cluster-name}-route53-policy"
+  path        = "/"
+  description = "Polcy for ${var.cluster-name} cluster to allow access to Route 53 for DNS record creation"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": ["route53:*"],
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "route53-policy" {
+  count      = "${var.external-dns-enabled}"
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "${aws_iam_policy.route53-policy.arn}"
 }
 
 resource "aws_iam_instance_profile" "profile" {

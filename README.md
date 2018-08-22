@@ -19,7 +19,8 @@ Current features:
 5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
 6. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
 7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
-8. Done!
+8. To enable [ExternalDNS](https://github.com/kubernetes-incubator/external-dns) apply the external-dns.yaml file with `kubectl apply -n kube-system -f external-dns.yaml` on the master node 
+9. Done!
 
 Optional Variables:
 
@@ -28,6 +29,7 @@ Optional Variables:
 * `instance-type` - Which EC2 instance type to use (m1.small by default)
 * `cluster-name` - Used for naming the created AWS resources (k8s by default)
 * `backup-enabled` - Set to "0" to disable the automatic backups and creation of the S3 bucket ("1" by default)
+* `external-dns-enabled` - Set to "0" to disable the pre-requisites for ExternalDNS ("1" by default)
 
 ### TODO
 
@@ -37,4 +39,4 @@ Optional Variables:
 * Alerting about when hosts are terminated.
 * General logging and monitoring of Kubernetes and running apps.
 * Make the Kubernetes version a variable rather than just grabbing the latest.
-
+* Terraform remote state on S3

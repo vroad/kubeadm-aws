@@ -62,3 +62,8 @@ variable "backup-enabled" {
   default = "1"
   description = "Whether or not the automatic S3 backup should be enabled. (1 for enabled, 0 for disabled)"
 }
+
+variable "external-dns-enabled" {
+  default = "1"
+  description = "Whether or not to enable external-dns. (1 for enabled, 0 for disabled)"
+}
