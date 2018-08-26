@@ -74,21 +74,28 @@ if [[ ! -z "${s3bucket}" ]] && [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc
 else
   echo "Running kubeadm init"
   kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16 --node-name=$(hostname -f)
+  touch /tmp/fresh-cluster
 fi
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel like the above cidr setting)
 echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
 service procps start
 
-# Set up kubectl for the ubuntu user and Flannel
+# Set up kubectl for the ubuntu user
 mkdir -p /home/ubuntu/.kube && cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config && chown -R ubuntu. /home/ubuntu/.kube
 echo 'source <(kubectl completion bash)' >> /home/ubuntu/.bashrc
-su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml' ubuntu
+
+if [ -f /tmp/fresh-cluster ]; then
+  su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml' ubuntu
+  mkdir /tmp/manifests
+  aws s3 sync s3://${s3bucket}/manifests/ /tmp/manifests
+  su -c 'kubectl apply -n kube-system -f /tmp/manifests/' ubuntu
+fi
 
 # Allow pod scheduling on the master (no recommended but we're doing it anyway :D)
 su -c 'kubectl taint nodes --all node-role.kubernetes.io/master-' ubuntu
 
-# Set up backups if they have been enabled (and so the s3 bucket exists)
+# Set up backups if they have been enabled
 if [[ ! -z "${s3bucket}" ]]; then
   # One time backup of kubernetes directory
   aws s3 cp /etc/kubernetes/pki/ca.crt s3://${s3bucket}/pki/$INSTANCE_ID/

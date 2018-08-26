@@ -133,13 +133,11 @@ resource "aws_security_group_rule" "allow_all_out" {
   security_group_id = "${aws_security_group.kubernetes.id}"
 }
 
-resource "aws_s3_bucket" "backup-bucket" {
-  count           = "${var.backup-enabled}"
+resource "aws_s3_bucket" "s3-bucket" {
   bucket_prefix   = "${var.cluster-name}"
   force_destroy   = "true"
 
   tags {
-    Name = "${var.cluster-name}-backup"
     Environment = "${var.cluster-name}"
   }
 
@@ -154,13 +152,27 @@ resource "aws_s3_bucket" "backup-bucket" {
   }
 }
 
+resource "aws_s3_bucket_object" "external-dns-manifest" {
+  bucket = "${aws_s3_bucket.s3-bucket.id}"
+  key    = "manifests/external-dns.yaml"
+  source = "manifests/external-dns.yaml"
+  etag   = "${md5(file("manifests/external-dns.yaml"))}"
+}
+
+resource "aws_s3_bucket_object" "ebs-storage-class-manifest" {
+  bucket = "${aws_s3_bucket.s3-bucket.id}"
+  key    = "manifests/ebs-storage-class.yaml"
+  source = "manifests/ebs-storage-class.yaml"
+  etag   = "${md5(file("manifests/ebs-storage-class.yaml"))}"
+}
+
 data "template_file" "master-userdata" {
   template = "${file("master.sh")}"
 
   vars {
     k8stoken = "${var.k8stoken}"
     clustername = "${var.cluster-name}"
-    s3bucket = "${(var.backup-enabled == "1" ? aws_s3_bucket.backup-bucket.id : "")}"
+    s3bucket = "${(var.backup-enabled == "1" ? aws_s3_bucket.s3-bucket.id : "")}"
     k8sversion = "${var.kubernetes-version}"
   }
 }
@@ -268,9 +280,9 @@ resource "aws_iam_role_policy_attachment" "ebs-volumes-policy" {
   policy_arn = "${aws_iam_policy.ebs-volumes-policy.arn}"
 }
 
-resource "aws_iam_policy" "backup-bucket-policy" {
+resource "aws_iam_policy" "s3-bucket-policy" {
   count       = "${var.backup-enabled}"
-  name        = "${var.cluster-name}-backup-bucket-policy"
+  name        = "${var.cluster-name}-s3-bucket-policy"
   path        = "/"
   description = "Polcy for ${var.cluster-name} cluster to allow access to the Backup S3 Bucket"
 
@@ -281,7 +293,7 @@ resource "aws_iam_policy" "backup-bucket-policy" {
         {
             "Effect": "Allow",
             "Action": ["s3:ListBucket"],
-            "Resource": ["${aws_s3_bucket.backup-bucket.arn}"]
+            "Resource": ["${aws_s3_bucket.s3-bucket.arn}"]
         },
         {
             "Effect": "Allow",
@@ -289,17 +301,17 @@ resource "aws_iam_policy" "backup-bucket-policy" {
                 "s3:PutObject",
                 "s3:GetObject"
             ],
-            "Resource": ["${aws_s3_bucket.backup-bucket.arn}/*"]
+            "Resource": ["${aws_s3_bucket.s3-bucket.arn}/*"]
         }
     ]
 }
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "backup-bucket-policy" {
+resource "aws_iam_role_policy_attachment" "s3-bucket-policy" {
   count      = "${var.backup-enabled}"
   role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.backup-bucket-policy.arn}"
+  policy_arn = "${aws_iam_policy.s3-bucket-policy.arn}"
 }
 
 resource "aws_iam_policy" "route53-policy" {
