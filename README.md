@@ -1,12 +1,16 @@
 ## Really cheap Kubernetes cluster on AWS with kubeadm
 
-This is a fork of a quick start by UPMC Enterprises. I've adapted (and possibly improved it) to use the cheapest available spot instances amongst other things, to make a really low cost cluster possible. For example you can run a 1 master, 1 worker cluster for somewhere around $6 a month. It uses m1.small spot instances and the free ephemeral storage they come with instead of EBS volumes.
+This repository contains a bunch of Bash and Terraform code which provisions what I believe to be the cheapest possible single master Kubernetes cluster on AWS. You can run a 1 master, 1 worker cluster for somewhere around $6 a month, or just the master node (which can also run pods) for around $3 a month.
+
+To achieve this, it uses m1.small spot instances and the free ephemeral storage they come with instead of EBS volumes.
 
 Current features:
 
-* Completely automated provisioning through Terraform of a single master cluster.
-* Variables for many things including number of workers (requests through spot fleet) and EC2 instance type.
 * Automatic backup and recovery. So if your master gets terminated, when the replacement is provisioned by AWS it will pick up where the old one left off without you doing anything. 😁
+* Completely automated provisioning through Terraform and Bash.
+* Variables for many things including number of workers (requested through spot fleet) and EC2 instance type.
+* [External DNS](https://github.com/kubernetes-incubator/external-dns) as a cheap ELB alternative.
+* Persistent Volumes using GP2 storage on EBS.
 
 #### _NOTE: Really really don't use this in production! However in theory the reliability should be quite good._
 
@@ -37,4 +41,5 @@ Optional Variables:
 * Improve security: Leaving the token valid forever probably isn't the best idea.
 * Alerting about when hosts are terminated.
 * General logging and monitoring of Kubernetes and running apps.
-* Terraform remote state on S3
+* Terraform remote state on S3.
+
