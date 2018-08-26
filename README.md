@@ -43,3 +43,8 @@ Optional Variables:
 * General logging and monitoring of Kubernetes and running apps.
 * Terraform remote state on S3.
 
+### Note about the license
+
+I am not associated with UPMC Enterprises, but because this project started off as a fork of their code I am required to leave their license in place. However this is still Open Source and so you are free to do more-or-less whatever you want with the contents of this repository.
+
+
