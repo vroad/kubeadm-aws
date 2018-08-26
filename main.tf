@@ -161,6 +161,7 @@ data "template_file" "master-userdata" {
     k8stoken = "${var.k8stoken}"
     clustername = "${var.cluster-name}"
     s3bucket = "${(var.backup-enabled == "1" ? aws_s3_bucket.backup-bucket.id : "")}"
+    k8sversion = "${var.kubernetes-version}"
   }
 }
 
@@ -170,6 +171,7 @@ data "template_file" "worker-userdata" {
   vars {
     k8stoken = "${var.k8stoken}"
     masterIP = "10.0.100.4"
+    k8sversion = "${var.kubernetes-version}"
   }
 }
 
@@ -231,6 +233,39 @@ EOF
 resource "aws_iam_role_policy_attachment" "create-tags-policy" {
   role       = "${aws_iam_role.role.name}"
   policy_arn = "${aws_iam_policy.create-tags-policy.arn}"
+}
+
+resource "aws_iam_policy" "ebs-volumes-policy" {
+  name        = "${var.cluster-name}-ebs-volumes-policy"
+  path        = "/"
+  description = "Polcy for ${var.cluster-name} cluster to allow dynamic provisioning of EBS persistent volumes"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:AttachVolume",
+                "ec2:CreateVolume",
+                "ec2:DeleteVolume",
+                "ec2:DescribeInstances",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeVolumesModifications",
+                "ec2:DetachVolume",
+                "ec2:ModifyVolume"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ebs-volumes-policy" {
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "${aws_iam_policy.ebs-volumes-policy.arn}"
 }
 
 resource "aws_iam_policy" "backup-bucket-policy" {
@@ -378,6 +413,7 @@ resource "aws_spot_fleet_request" "worker" {
       map(
        "Name", "${var.cluster-name}-worker",
        "Environment", "${var.cluster-name}",
+       "kubernetes.io/cluster/${var.cluster-name}", "owned",
       )
     }"
   }

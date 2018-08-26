@@ -1,4 +1,4 @@
-*.tfstate
+*.tfstate*
 *.backup
 .terraform
 token.txt

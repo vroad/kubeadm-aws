@@ -48,6 +48,11 @@ variable "region" {
   default = "us-east-1"
 }
 
+variable "kubernetes-version" {
+  default = "1.11.2"
+  description = "Which version of Kubernetes to install"
+}
+
 variable "instance-type" {
   default = "m1.small"
   description = "Which EC2 instance type to use"

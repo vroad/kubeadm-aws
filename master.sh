@@ -16,7 +16,8 @@ echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.l
 echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl docker-ce awscli jq
+DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 docker-ce awscli jq bash-completion
+apt-mark hold kubelet kubeadm kubectl
 
 # Install etcdctl for the version of etcd we're running
 ETCD_VERSION=$(kubeadm config images list | grep etcd | cut -d':' -f2)
@@ -39,9 +40,14 @@ cat <<EOF > /etc/docker/daemon.json
 EOF
 systemctl restart docker
 
+# Work around the fact spot requests can't tag their instances
+REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
+INSTANCE_ID=$(ec2metadata --instance-id)
+aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}" "Key=kubernetes.io/cluster/${clustername},Value=owned"
+
 # Point kubelet at big ephemeral drive
 mkdir /mnt/kubelet
-echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet"' > /etc/default/kubelet
+echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet --cloud-provider=aws"' > /etc/default/kubelet
 
 # Check if there is an etcd backup on the s3 bucket and restore from it if there is
 if [[ ! -z "${s3bucket}" ]] && [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc -l) -ne 0 ]; then
@@ -64,10 +70,10 @@ if [[ ! -z "${s3bucket}" ]] && [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc
   mv default.etcd/member /var/lib/etcd/
 
   echo "Running kubeadm init"
-  kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16
+  kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16 --node-name=$(hostname -f)
 else
   echo "Running kubeadm init"
-  kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16
+  kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16 --node-name=$(hostname -f)
 fi
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel like the above cidr setting)
@@ -76,15 +82,11 @@ service procps start
 
 # Set up kubectl for the ubuntu user and Flannel
 mkdir -p /home/ubuntu/.kube && cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config && chown -R ubuntu. /home/ubuntu/.kube
+echo 'source <(kubectl completion bash)' >> /home/ubuntu/.bashrc
 su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml' ubuntu
 
 # Allow pod scheduling on the master (no recommended but we're doing it anyway :D)
 su -c 'kubectl taint nodes --all node-role.kubernetes.io/master-' ubuntu
-
-# Work around the fact spot requests can't tag their instances
-REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
-INSTANCE_ID=$(ec2metadata --instance-id)
-aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}"
 
 # Set up backups if they have been enabled (and so the s3 bucket exists)
 if [[ ! -z "${s3bucket}" ]]; then

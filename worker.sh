@@ -16,7 +16,8 @@ echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.l
 echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl docker-ce
+DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 docker-ce
+apt-mark hold kubelet kubeadm kubectl
 
 # Point Docker at big ephemeral drive and turn on log rotation
 mkdir /mnt/docker
@@ -34,11 +35,11 @@ systemctl restart docker
 
 # Point kubelet at big ephemeral drive
 mkdir /mnt/kubelet
-echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet"' > /etc/default/kubelet
+echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet --cloud-provider=aws"' > /etc/default/kubelet
 
 # Pass bridged IPv4 traffic to iptables chains (required by Flannel)
 echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
 service procps start
 
 # Join the cluster
-for i in {1..50}; do kubeadm join --token=${k8stoken} --discovery-token-unsafe-skip-ca-verification ${masterIP}:6443 && break || sleep 15; done
+for i in {1..50}; do kubeadm join --token=${k8stoken} --discovery-token-unsafe-skip-ca-verification --node-name=$(hostname -f) ${masterIP}:6443 && break || sleep 15; done

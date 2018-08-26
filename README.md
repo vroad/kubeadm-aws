@@ -19,13 +19,15 @@ Current features:
 5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
 6. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
 7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
-8. To enable [ExternalDNS](https://github.com/kubernetes-incubator/external-dns) apply the external-dns.yaml file with `kubectl apply -n kube-system -f external-dns.yaml` on the master node 
-9. Done!
+8. To enable [ExternalDNS](https://github.com/kubernetes-incubator/external-dns) apply the external-dns.yaml file with `kubectl apply -n kube-system -f manifests/external-dns.yaml` on the master node
+9. To set up persistent volumes using EBS apply the ebs-storage-class.yaml file with `kubectl apply -f manifests/ebs-storage-class.yaml` on the master node
+10. Done!
 
 Optional Variables:
 
 * `worker-count` - How many worker nodes to request via Spot Fleet (1 by default)
 * `region` - Which AWS region to use (us-east-1 by default)
+* `kubernetes-version` - Which Kubernetes/kubeadm version to intsall (1.11.2 by default)
 * `instance-type` - Which EC2 instance type to use (m1.small by default)
 * `cluster-name` - Used for naming the created AWS resources (k8s by default)
 * `backup-enabled` - Set to "0" to disable the automatic backups and creation of the S3 bucket ("1" by default)
@@ -35,8 +37,6 @@ Optional Variables:
 
 * Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
 * Improve security: Leaving the token valid forever probably isn't the best idea.
-* EBS persistent volumes including adding the necessary permissions to the instance profile.
 * Alerting about when hosts are terminated.
 * General logging and monitoring of Kubernetes and running apps.
-* Make the Kubernetes version a variable rather than just grabbing the latest.
 * Terraform remote state on S3
