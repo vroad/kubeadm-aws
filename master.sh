@@ -52,6 +52,8 @@ apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 controllerManagerExtraArgs:
   cloud-provider: aws
+apiServerExtraArgs:
+  cloud-provider: aws
 bootstrapTokens:
 - groups:
   - system:bootstrappers:kubeadm:default-node-token
