@@ -329,7 +329,7 @@ resource "aws_iam_instance_profile" "profile" {
 
 resource "aws_spot_instance_request" "master" {
   ami           = "${data.aws_ami.latest_ami.id}"
-  instance_type = "${var.instance-type}"
+  instance_type = "${var.master-instance-type}"
   subnet_id = "${aws_subnet.public.id}"
   user_data = "${data.template_file.master-userdata.rendered}"
   key_name = "${var.k8s-ssh-key}"
@@ -394,7 +394,7 @@ resource "aws_spot_fleet_request" "worker" {
 
   launch_specification {
     ami                    = "${data.aws_ami.latest_ami.id}"
-    instance_type          = "${var.instance-type}"
+    instance_type          = "${var.worker-instance-type}"
     ebs_optimized          = false
     weighted_capacity      = 1 # Says that this instance type has 1 CPU
     spot_price             = "0.01"

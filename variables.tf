@@ -53,9 +53,14 @@ variable "kubernetes-version" {
   description = "Which version of Kubernetes to install"
 }
 
-variable "instance-type" {
+variable "master-instance-type" {
   default = "m1.small"
-  description = "Which EC2 instance type to use"
+  description = "Which EC2 instance type to use for the master nodes"
+}
+
+variable "worker-instance-type" {
+  default = "m1.small"
+  description = "Which EC2 instance type to use for the worker nodes"
 }
 
 variable "worker-count" {
