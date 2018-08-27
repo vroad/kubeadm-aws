@@ -10,13 +10,11 @@ sed -i '/swap/d' /etc/fstab
 
 # Install K8S, kubeadm and Docker
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
 echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
-echo "deb https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 docker-ce awscli jq bash-completion
+DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 docker.io awscli jq bash-completion
 apt-mark hold kubelet kubeadm kubectl
 
 # Install etcdctl for the version of etcd we're running
@@ -49,6 +47,25 @@ aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,V
 mkdir /mnt/kubelet
 echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet --cloud-provider=aws"' > /etc/default/kubelet
 
+cat >init-config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+controllerManagerExtraArgs:
+  cloud-provider: aws
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  token: "${k8stoken}"
+  ttl: "0"
+  usages:
+  - signing
+  - authentication
+networking:
+  podSubnet: "10.244.0.0/16"
+nodeRegistration:
+  name: "$(hostname -f)"
+EOF
+
 # Check if there is an etcd backup on the s3 bucket and restore from it if there is
 if [[ ! -z "${s3bucket}" ]] && [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc -l) -ne 0 ]; then
   echo "Found existing etcd backup. Restoring from it instead of starting from fresh."
@@ -70,10 +87,10 @@ if [[ ! -z "${s3bucket}" ]] && [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc
   mv default.etcd/member /var/lib/etcd/
 
   echo "Running kubeadm init"
-  kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16 --node-name=$(hostname -f)
+  kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --config=init-config.yaml
 else
   echo "Running kubeadm init"
-  kubeadm init --token=${k8stoken} --token-ttl=0 --pod-network-cidr=10.244.0.0/16 --node-name=$(hostname -f)
+  kubeadm init --config=init-config.yaml
   touch /tmp/fresh-cluster
 fi
 

@@ -223,32 +223,8 @@ resource "aws_iam_role_policy_attachment" "policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-resource "aws_iam_policy" "create-tags-policy" {
-  name        = "${var.cluster-name}-create-tags-policy"
-  path        = "/"
-  description = "Polcy for ${var.cluster-name} cluster to allow setting EC2 tags"
-
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": "ec2:CreateTags",
-            "Resource": "arn:aws:ec2:*:*:instance/*"
-        }
-    ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy_attachment" "create-tags-policy" {
-  role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.create-tags-policy.arn}"
-}
-
-resource "aws_iam_policy" "ebs-volumes-policy" {
-  name        = "${var.cluster-name}-ebs-volumes-policy"
+resource "aws_iam_policy" "cluster-policy" {
+  name        = "${var.cluster-name}-cluster-policy"
   path        = "/"
   description = "Polcy for ${var.cluster-name} cluster to allow dynamic provisioning of EBS persistent volumes"
 
@@ -263,10 +239,16 @@ resource "aws_iam_policy" "ebs-volumes-policy" {
                 "ec2:CreateVolume",
                 "ec2:DeleteVolume",
                 "ec2:DescribeInstances",
+                "ec2:DescribeRouteTables",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets",
                 "ec2:DescribeVolumes",
                 "ec2:DescribeVolumesModifications",
+                "ec2:DescribeVpcs",
+                "elasticloadbalancing:DescribeLoadBalancers",
                 "ec2:DetachVolume",
-                "ec2:ModifyVolume"
+                "ec2:ModifyVolume",
+                "ec2:CreateTags"
             ],
             "Resource": "*"
         }
@@ -275,9 +257,9 @@ resource "aws_iam_policy" "ebs-volumes-policy" {
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "ebs-volumes-policy" {
+resource "aws_iam_role_policy_attachment" "cluster-policy" {
   role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.ebs-volumes-policy.arn}"
+  policy_arn = "${aws_iam_policy.cluster-policy.arn}"
 }
 
 resource "aws_iam_policy" "s3-bucket-policy" {
@@ -408,7 +390,7 @@ resource "aws_spot_fleet_request" "worker" {
   terminate_instances_with_expiration = true
   replace_unhealthy_instances         = true
   excess_capacity_termination_policy  = "Default" # Terminate instances if the fleet is too big
-  valid_until                         = "9999-12-25T12:00:00Z"
+  valid_until                         = "2030-12-25T12:00:00Z"
 
   launch_specification {
     ami                    = "${data.aws_ami.latest_ami.id}"
