@@ -19,9 +19,9 @@ apt-mark hold kubelet kubeadm kubectl
 
 # Install etcdctl for the version of etcd we're running
 ETCD_VERSION=$(kubeadm config images list | grep etcd | cut -d':' -f2)
-wget https://github.com/coreos/etcd/releases/download/v$ETCD_VERSION/etcd-v$ETCD_VERSION-linux-amd64.tar.gz
-tar xvf etcd-v3.2.18-linux-amd64.tar.gz
-mv etcd-v3.2.18-linux-amd64/etcdctl /usr/local/bin/
+wget "https://github.com/coreos/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz"
+tar xvf "etcd-v${ETCD_VERSION}-linux-amd64.tar.gz"
+mv "etcd-v${ETCD_VERSION}-linux-amd64/etcdctl" /usr/local/bin/
 rm -rf etcd*
 
 # Point Docker at big ephemeral drive and turn on log rotation
