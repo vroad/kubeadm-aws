@@ -35,16 +35,12 @@ Optional Variables:
 * `worker-instance-type` - Which EC2 instance type to use for the worker nodes (m1.small by default)
 * `worker-spot-price` - The maximum spot bid for worker nodes ($0.01 by default)
 * `cluster-name` - Used for naming the created AWS resources (k8s by default)
-* `backup-enabled` - Set to "0" to disable the automatic backups ("1" by default)
-* `external-dns-enabled` - Set to "0" to disable the pre-requisites for ExternalDNS ("1" by default)
+* `backup-enabled` - Set to "0" to disable the automatic backups (1 by default)
+* `external-dns-enabled` - Set to "0" to disable the pre-requisites for ExternalDNS (1 by default)
 
-### TODO
+### Contributing
 
-* Find a reliable way of generating tokens. [See this issue.](https://github.com/upmc-enterprises/kubeadm-aws/issues/11)
-* Improve security: Leaving the token valid forever probably isn't the best idea.
-* Alerting about when hosts are terminated.
-* General logging and monitoring of Kubernetes and running apps.
-* Terraform remote state on S3.
+I've written this as a personal project and will do my best to maintain it to a good standard, despite having very limited free time. I very much welcome contributions in the form of Pull Requests and Issues (for both bugs and feature requests).
 
 ### Note about the license
 
