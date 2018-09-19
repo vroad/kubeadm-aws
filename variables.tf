@@ -58,9 +58,19 @@ variable "master-instance-type" {
   description = "Which EC2 instance type to use for the master nodes"
 }
 
+variable "master-spot-price" {
+  default = "0.01"
+  description = "The maximum spot bid for the master node"
+}
+
 variable "worker-instance-type" {
   default = "m1.small"
   description = "Which EC2 instance type to use for the worker nodes"
+}
+
+variable "worker-spot-price" {
+  default = "0.01"
+  description = "The maximum spot bid for worker nodes"
 }
 
 variable "worker-count" {

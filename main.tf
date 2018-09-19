@@ -190,8 +190,7 @@ data "template_file" "worker-userdata" {
 data "aws_ami" "latest_ami" {
   filter {
     name   = "name"
-    values = ["ubuntu-minimal/images-testing/hvm-instance/ubuntu-bionic-daily-amd64-minimal-*"]
-    # There seem to be only testing minimal images. Check for released versions of ubuntu-minimal/images/hvm-instance/ubuntu-bionic-18.04-amd64-minimal
+    values = ["ubuntu/images/hvm-instance/ubuntu-bionic-18.04-amd64-server-*"]
   }
 
   most_recent = true
@@ -335,7 +334,7 @@ resource "aws_spot_instance_request" "master" {
   key_name = "${var.k8s-ssh-key}"
   iam_instance_profile   = "${aws_iam_instance_profile.profile.name}"
   vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
-  spot_price = "0.01"
+  spot_price = "${var.master-spot-price}"
   valid_until = "9999-12-25T12:00:00Z"
   wait_for_fulfillment = true
   private_ip = "10.0.100.4"
@@ -397,7 +396,7 @@ resource "aws_spot_fleet_request" "worker" {
     instance_type          = "${var.worker-instance-type}"
     ebs_optimized          = false
     weighted_capacity      = 1 # Says that this instance type has 1 CPU
-    spot_price             = "0.01"
+    spot_price             = "${var.worker-spot-price}"
     subnet_id              = "${aws_subnet.public.id}"
     vpc_security_group_ids = ["${aws_security_group.kubernetes.id}"]
     iam_instance_profile   = "${aws_iam_instance_profile.profile.name}"
