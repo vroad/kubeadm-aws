@@ -173,6 +173,7 @@ data "template_file" "master-userdata" {
     k8stoken = "${var.k8stoken}"
     clustername = "${var.cluster-name}"
     s3bucket = "${(var.backup-enabled == "1" ? aws_s3_bucket.s3-bucket.id : "")}"
+    backupcron = "${var.backup-cron-expression}"
     k8sversion = "${var.kubernetes-version}"
   }
 }

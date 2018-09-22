@@ -133,7 +133,7 @@ if [[ ! -z "${s3bucket}" ]]; then
 	aws s3 cp etcd-snapshot.db s3://${s3bucket}/etcd-backups/$INSTANCE_ID/etcd-snapshot-\$(date -Iseconds).db
 	EOF
 
-  echo "*/15 * * * * root bash /usr/local/bin/backup-etcd.sh" > /etc/cron.d/backup-etcd
+  echo "${backupcron} root bash /usr/local/bin/backup-etcd.sh" > /etc/cron.d/backup-etcd
 
   # Poll the spot instance termination URL and backup immediately if it returns a 200 response.
   cat <<-'EOF' > /usr/local/bin/check-termination.sh

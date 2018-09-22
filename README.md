@@ -36,7 +36,8 @@ Optional Variables:
 * `worker-instance-type` - Which EC2 instance type to use for the worker nodes (m1.small by default)
 * `worker-spot-price` - The maximum spot bid for worker nodes ($0.01 by default)
 * `cluster-name` - Used for naming the created AWS resources (k8s by default)
-* `backup-enabled` - Set to "0" to disable the automatic backups (1 by default)
+* `backup-enabled` - Set to "0" to disable the automatic etcd backups (1 by default)
+* `backup-cron-expression` - A cron expression to use for the automatic etcd backups (`*/15 * * * *` by default)
 * `external-dns-enabled` - Set to "0" to disable the pre-requisites for ExternalDNS (1 by default)
 
 ### Contributing
