@@ -12,7 +12,8 @@ Current features:
 * [External DNS](https://github.com/kubernetes-incubator/external-dns) as a cheap ELB alternative.
 * Persistent Volumes using GP2 storage on EBS.
 
-#### _NOTE: Really really don't use this in production! However in theory the reliability should be quite good._
+**Please use the releases rather than pulling from master. Master may be untested at any given point in time.**
+**This isn't designed for production (unless you're very brave) but I've found no stability issues so far for my personal development usage.**
 
 ### Run it!
 
@@ -29,7 +30,7 @@ Optional Variables:
 
 * `worker-count` - How many worker nodes to request via Spot Fleet (1 by default)
 * `region` - Which AWS region to use (us-east-1 by default)
-* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.11.2 by default)
+* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.11.3 by default)
 * `master-instance-type` - Which EC2 instance type to use for the master node (m1.small by default)
 * `master-spot-price` - The maximum spot bid for the master node ($0.01 by default)
 * `worker-instance-type` - Which EC2 instance type to use for the worker nodes (m1.small by default)
@@ -45,5 +46,4 @@ I've written this as a personal project and will do my best to maintain it to a 
 ### Note about the license
 
 I am not associated with UPMC Enterprises, but because this project started off as a fork of their code I am required to leave their license in place. However this is still Open Source and so you are free to do more-or-less whatever you want with the contents of this repository.
-
 
