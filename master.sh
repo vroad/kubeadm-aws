@@ -1,4 +1,4 @@
-#!/bin/bash -v
+#!/bin/bash -ve
 
 # Disable pointless daemons
 systemctl stop snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent
@@ -8,27 +8,32 @@ systemctl disable snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agen
 swapoff -a
 sed -i '/swap/d' /etc/fstab
 
-# Install K8S, kubeadm and Docker
+# Install K8S, kubeadm and Docker 17.03 (most recent supported version for Kubernetes)
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-
 echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
-
+export DEBIAN_FRONTEND=noninteractive
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 docker.io awscli jq bash-completion
-apt-mark hold kubelet kubeadm kubectl
+wget http://launchpadlibrarian.net/361362020/docker.io_17.03.2-0ubuntu5_amd64.deb
+dpkg -i docker.io_17.03.2-0ubuntu5_amd64.deb
+apt-get install -fy
+apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 awscli jq
+apt-mark hold kubelet kubeadm kubectl docker.io
 
 # Install etcdctl for the version of etcd we're running
 ETCD_VERSION=$(kubeadm config images list | grep etcd | cut -d':' -f2)
-wget "https://github.com/coreos/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz"
-tar xvf "etcd-v${ETCD_VERSION}-linux-amd64.tar.gz"
-mv "etcd-v${ETCD_VERSION}-linux-amd64/etcdctl" /usr/local/bin/
+wget "https://github.com/coreos/etcd/releases/download/v$${ETCD_VERSION}/etcd-v$${ETCD_VERSION}-linux-amd64.tar.gz"
+tar xvf "etcd-v$${ETCD_VERSION}-linux-amd64.tar.gz"
+mv "etcd-v$${ETCD_VERSION}-linux-amd64/etcdctl" /usr/local/bin/
 rm -rf etcd*
 
-# Point Docker at big ephemeral drive and turn on log rotation
+# Point Docker at big ephemeral drive and turn on log rotation (messy because data-root option didn't exist in 17.03)
+systemctl stop docker
 mkdir /mnt/docker
+chmod 711 /mnt/docker
+rm -rf /var/lib/docker
+ln -s /mnt/docker /var/lib/docker
 cat <<EOF > /etc/docker/daemon.json
 {
-    "data-root": "/mnt/docker",
     "log-driver": "json-file",
     "log-opts": {
         "max-size": "10m",
@@ -36,7 +41,8 @@ cat <<EOF > /etc/docker/daemon.json
     }
 }
 EOF
-systemctl restart docker
+systemctl start docker
+systemctl enable docker
 
 # Work around the fact spot requests can't tag their instances
 REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
@@ -134,18 +140,18 @@ if [[ ! -z "${s3bucket}" ]]; then
 	#!/bin/bash
 	# Mostly borrowed from https://github.com/kube-aws/kube-spot-termination-notice-handler/blob/master/entrypoint.sh
 	
-	POLL_INTERVAL=5
+	POLL_INTERVAL=10
 	NOTICE_URL="http://169.254.169.254/latest/meta-data/spot/termination-time"
 	
-	echo "Polling ${NOTICE_URL} every ${POLL_INTERVAL} second(s)"
+	echo "Polling $${NOTICE_URL} every $${POLL_INTERVAL} second(s)"
 	
 	# To whom it may concern: http://superuser.com/questions/590099/can-i-make-curl-fail-with-an-exitcode-different-than-0-if-the-http-status-code-i
-	while http_status=$(curl -o /dev/null -w '%{http_code}' -sL ${NOTICE_URL}); [ ${http_status} -ne 200 ]; do
-	  echo "$(date): Polled termination notice URL. HTTP Status was ${http_status}."
-	  sleep ${POLL_INTERVAL}
+	while http_status=$(curl -o /dev/null -w '%{http_code}' -sL $${NOTICE_URL}); [ $${http_status} -ne 200 ]; do
+	  echo "Polled termination notice URL. HTTP Status was $${http_status}."
+	  sleep $${POLL_INTERVAL}
 	done
 	
-	echo "$(date): Polled termination notice URL. HTTP Status was ${http_status}. Triggering backup."
+	echo "Polled termination notice URL. HTTP Status was $${http_status}. Triggering backup."
 	/bin/bash /usr/local/bin/backup-etcd.sh
 	sleep 300 # Sleep for 5 minutes, by which time the machine will have terminated.
 	EOF
@@ -164,4 +170,7 @@ if [[ ! -z "${s3bucket}" ]]; then
 	[Install]
 	WantedBy=multi-user.target
 	EOF
+
+  systemctl start check-termination
+  systemctl enable check-termination
 fi
