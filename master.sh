@@ -128,4 +128,40 @@ if [[ ! -z "${s3bucket}" ]]; then
 	EOF
 
   echo "*/15 * * * * root bash /usr/local/bin/backup-etcd.sh" > /etc/cron.d/backup-etcd
+
+  # Poll the spot instance termination URL and backup immediately if it returns a 200 response.
+  cat <<-'EOF' > /usr/local/bin/check-termination.sh
+	#!/bin/bash
+	# Mostly borrowed from https://github.com/kube-aws/kube-spot-termination-notice-handler/blob/master/entrypoint.sh
+	
+	POLL_INTERVAL=5
+	NOTICE_URL="http://169.254.169.254/latest/meta-data/spot/termination-time"
+	
+	echo "Polling ${NOTICE_URL} every ${POLL_INTERVAL} second(s)"
+	
+	# To whom it may concern: http://superuser.com/questions/590099/can-i-make-curl-fail-with-an-exitcode-different-than-0-if-the-http-status-code-i
+	while http_status=$(curl -o /dev/null -w '%{http_code}' -sL ${NOTICE_URL}); [ ${http_status} -ne 200 ]; do
+	  echo "$(date): Polled termination notice URL. HTTP Status was ${http_status}."
+	  sleep ${POLL_INTERVAL}
+	done
+	
+	echo "$(date): Polled termination notice URL. HTTP Status was ${http_status}. Triggering backup."
+	/bin/bash /usr/local/bin/backup-etcd.sh
+	sleep 300 # Sleep for 5 minutes, by which time the machine will have terminated.
+	EOF
+
+  cat <<-'EOF' > /etc/systemd/system/check-termination.service
+	[Unit]
+	Description=Spot Termination Checker
+	After=network.target
+	[Service]
+	Type=simple
+	Restart=always
+	RestartSec=10
+	User=root
+	ExecStart=/bin/bash /usr/local/bin/check-termination.sh
+	
+	[Install]
+	WantedBy=multi-user.target
+	EOF
 fi
