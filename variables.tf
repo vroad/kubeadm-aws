@@ -49,7 +49,7 @@ variable "region" {
 }
 
 variable "kubernetes-version" {
-  default = "1.11.3"
+  default = "1.11.5"
   description = "Which version of Kubernetes to install"
 }
 

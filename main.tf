@@ -172,9 +172,10 @@ data "template_file" "master-userdata" {
   vars {
     k8stoken = "${var.k8stoken}"
     clustername = "${var.cluster-name}"
-    s3bucket = "${(var.backup-enabled == "1" ? aws_s3_bucket.s3-bucket.id : "")}"
+    s3bucket = "${aws_s3_bucket.s3-bucket.id}"
     backupcron = "${var.backup-cron-expression}"
     k8sversion = "${var.kubernetes-version}"
+    backupenabled = "${var.backup-enabled}"
   }
 }
 
@@ -263,7 +264,6 @@ resource "aws_iam_role_policy_attachment" "cluster-policy" {
 }
 
 resource "aws_iam_policy" "s3-bucket-policy" {
-  count       = "${var.backup-enabled}"
   name        = "${var.cluster-name}-s3-bucket-policy"
   path        = "/"
   description = "Polcy for ${var.cluster-name} cluster to allow access to the Backup S3 Bucket"
@@ -281,7 +281,8 @@ resource "aws_iam_policy" "s3-bucket-policy" {
             "Effect": "Allow",
             "Action": [
                 "s3:PutObject",
-                "s3:GetObject"
+                "s3:GetObject",
+                "s3:ListObjects"
             ],
             "Resource": ["${aws_s3_bucket.s3-bucket.arn}/*"]
         }
@@ -291,7 +292,6 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "s3-bucket-policy" {
-  count      = "${var.backup-enabled}"
   role       = "${aws_iam_role.role.name}"
   policy_arn = "${aws_iam_policy.s3-bucket-policy.arn}"
 }

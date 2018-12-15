@@ -75,7 +75,7 @@ nodeRegistration:
 EOF
 
 # Check if there is an etcd backup on the s3 bucket and restore from it if there is
-if [[ ! -z "${s3bucket}" ]] && [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc -l) -ne 0 ]; then
+if [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc -l) -ne 0 ]; then
   echo "Found existing etcd backup. Restoring from it instead of starting from fresh."
   latest_backup=$(aws s3api list-objects --bucket ${s3bucket} --prefix etcd-backups --query 'reverse(sort_by(Contents,&LastModified))[0]' | jq -rc .Key)
 
@@ -121,7 +121,7 @@ fi
 su -c 'kubectl taint nodes --all node-role.kubernetes.io/master-' ubuntu
 
 # Set up backups if they have been enabled
-if [[ ! -z "${s3bucket}" ]]; then
+if [[ "${backupenabled}" == "1" ]]; then
   # One time backup of kubernetes directory
   aws s3 cp /etc/kubernetes/pki/ca.crt s3://${s3bucket}/pki/$INSTANCE_ID/
   aws s3 cp /etc/kubernetes/pki/ca.key s3://${s3bucket}/pki/$INSTANCE_ID/
