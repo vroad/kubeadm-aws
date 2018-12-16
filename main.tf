@@ -196,6 +196,21 @@ resource "aws_s3_bucket_object" "nginx-ingress-manifest" {
   etag   = "${md5(file("manifests/nginx-ingress-mandatory.yaml"))}"
 }
 
+data "template_file" "nginx-ingress-nodeport-manifest" {
+  count  = "${var.nginx-ingress-enabled}"
+  template = "${file("manifests/nginx-ingress-nodeport.yaml.tmpl")}"
+  vars {
+    nginx_ingress_domain = "${var.nginx-ingress-domain}"
+  }
+}
+resource "aws_s3_bucket_object" "nginx-ingress-nodeport-manifest" {
+  count  = "${var.nginx-ingress-enabled}"
+  bucket = "${aws_s3_bucket.s3-bucket.id}"
+  key    = "manifests/nginx-ingress-nodeport.yaml"
+  content = "${data.template_file.nginx-ingress-nodeport-manifest.rendered}"
+  etag   = "${md5(data.template_file.nginx-ingress-nodeport-manifest.rendered)}"
+}
+
 data "template_file" "cluster-autoscaler-manifest" {
   template = "${file("manifests/cluster-autoscaler-autodiscover.yaml.tmpl")}"
   vars {

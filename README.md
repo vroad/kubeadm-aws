@@ -8,7 +8,7 @@ Current features:
 
 * Automatic backup and recovery. So if your master gets terminated, when the replacement is provisioned by AWS it will pick up where the old one left off without you doing anything. 😁
 * Completely automated provisioning through Terraform and Bash.
-* Variables for many things including number of workers (requested through an auto-scaling group) and EC2 instance type.
+* Variables for many things including number of workers (provisioned using an auto-scaling group) and EC2 instance type.
 * [External DNS](https://github.com/kubernetes-incubator/external-dns) and [Nginx Ingess](https://github.com/kubernetes/ingress-nginx) as a cheap ELB alternative.
 * Auto Scaling of worker nodes, if you enable the [Cluster AutoScaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler).
 * Persistent Volumes using GP2 storage on EBS.
@@ -22,7 +22,7 @@ Current features:
 2. [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
 3. Generate token: `python -c 'import random; print "%0x.%0x" % (random.SystemRandom().getrandbits(3*8), random.SystemRandom().getrandbits(8*8))' > token.txt`
 4. Make an SSH key on us-east-1 from the AWS console
-5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
+5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32" -var nginx-ingress-domain="ingress.mydomain.com"`
 6. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
 7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
 10. Done!
@@ -32,7 +32,7 @@ Optional Variables:
 * `min-worker-count` - The minimum size of the worker node Auto-Scaling Group (1 by default)
 * `max-worker-count` - The maximum size of the worker node Auto-Scaling Group (1 by default)
 * `region` - Which AWS region to use (us-east-1 by default)
-* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.11.5 by default)
+* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.13.1 by default)
 * `master-instance-type` - Which EC2 instance type to use for the master node (m1.small by default)
 * `master-spot-price` - The maximum spot bid for the master node ($0.01 by default)
 * `worker-instance-type` - Which EC2 instance type to use for the worker nodes (m1.small by default)
@@ -40,9 +40,16 @@ Optional Variables:
 * `cluster-name` - Used for naming the created AWS resources (k8s by default)
 * `backup-enabled` - Set to "0" to disable the automatic etcd backups (1 by default)
 * `backup-cron-expression` - A cron expression to use for the automatic etcd backups (`*/15 * * * *` by default)
-* `external-dns-enabled` - Set to "0" to disable ExternalDNS (1 by default)
+* `external-dns-enabled` - Set to "0" to disable ExternalDNS (1 by default) - Existing Route 53 Domain required
 * `nginx-ingress-enabled` - Set to "0" to disable Nginx Ingress (1 by default)
+* `nginx-ingress-domain` - The DNS name to map to Nginx Ingress using External DNS ("" by default)
 * `cluster-autoscaler-enabled` - Set to "1" to enable the cluster autoscaler (0 by default)
+
+### Ingress Notes
+
+As hinted above, this uses Nginx Ingress as an alternative to a Load Balancer. This is done by exposing ports 443 and 80 directly on each of the nodes (Workers and the Master) using a NodePort type Service. Unfortunately External DNS doesn't seem to work with Nginx Ingress when you expose it in this way, so I've had to just map a single DNS name (using the nginx-ingress-domain variable) to the NodePort service itself. External DNS will keep that entry up to date with the IPs of the nodes in the cluster; you will then have to manually add CNAME entries for your individual services.
+
+I am well aware that this isn't the most secure way of exposing services, but it's secure enough for my purposes. If anyone has any suggestions on a better way of doing this without shelling out $20 a month for an ELB, please open an Issue!
 
 ### Contributing
 

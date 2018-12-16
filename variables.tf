@@ -49,7 +49,7 @@ variable "region" {
 }
 
 variable "kubernetes-version" {
-  default = "1.12.2"
+  default = "1.13.1"
   description = "Which version of Kubernetes to install"
 }
 
@@ -101,6 +101,11 @@ variable "external-dns-enabled" {
 variable "nginx-ingress-enabled" {
   default = "1"
   description = "Whether or not to enable nginx ingress. (1 for enabled, 0 for disabled)"
+}
+
+variable "nginx-ingress-domain" {
+  default = ""
+  description = "The DNS name to map to Nginx Ingress (using External DNS)"
 }
 
 variable "cluster-autoscaler-enabled" {

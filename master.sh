@@ -92,10 +92,10 @@ if [ $(aws s3 ls s3://${s3bucket}/etcd-backups/ | wc -l) -ne 0 ]; then
   mv default.etcd/member /var/lib/etcd/
 
   echo "Running kubeadm init"
-  kubeadm init --ignore-preflight-errors=DirAvailable--var-lib-etcd --config=init-config.yaml
+  kubeadm init --ignore-preflight-errors="DirAvailable--var-lib-etcd,NumCPU" --config=init-config.yaml
 else
   echo "Running kubeadm init"
-  kubeadm init --config=init-config.yaml
+  kubeadm init --config=init-config.yaml --ignore-preflight-errors=NumCPU
   touch /tmp/fresh-cluster
 fi
 
@@ -111,7 +111,7 @@ if [ -f /tmp/fresh-cluster ]; then
   su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/13a990bb716c82a118b8e825b78189dcfbfb2f1e/Documentation/kube-flannel.yml' ubuntu
   mkdir /tmp/manifests
   aws s3 sync s3://${s3bucket}/manifests/ /tmp/manifests
-  su -c 'kubectl apply -n kube-system -f /tmp/manifests/' ubuntu
+  su -c 'kubectl apply -f /tmp/manifests/' ubuntu
 fi
 
 # Set up backups if they have been enabled
