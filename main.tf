@@ -226,6 +226,20 @@ resource "aws_s3_bucket_object" "cluster-autoscaler-manifest" {
   etag   = "${md5(data.template_file.cluster-autoscaler-manifest.rendered)}"
 }
 
+data "template_file" "cert-manager-issuer-manifest" {
+  template = "${file("manifests/cert-manager-issuer.yaml.tmpl")}"
+  vars {
+    cert_manager_email = "${var.cert-manager-email}"
+  }
+}
+resource "aws_s3_bucket_object" "cert-manager-issuer-manifest" {
+  count  = "${var.cert-manager-enabled}"
+  bucket = "${aws_s3_bucket.s3-bucket.id}"
+  key    = "manifests/cert-manager-issuer.yaml"
+  content = "${data.template_file.cert-manager-issuer-manifest.rendered}"
+  etag   = "${md5(data.template_file.cert-manager-issuer-manifest.rendered)}"
+}
+
 data "template_file" "master-userdata" {
   template = "${file("master.sh")}"
 
@@ -236,6 +250,7 @@ data "template_file" "master-userdata" {
     backupcron = "${var.backup-cron-expression}"
     k8sversion = "${var.kubernetes-version}"
     backupenabled = "${var.backup-enabled}"
+    certmanagerenabled = "${var.cert-manager-enabled}"
   }
 }
 

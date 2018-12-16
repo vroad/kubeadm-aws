@@ -9,7 +9,8 @@ Current features:
 * Automatic backup and recovery. So if your master gets terminated, when the replacement is provisioned by AWS it will pick up where the old one left off without you doing anything. 😁
 * Completely automated provisioning through Terraform and Bash.
 * Variables for many things including number of workers (provisioned using an auto-scaling group) and EC2 instance type.
-* [External DNS](https://github.com/kubernetes-incubator/external-dns) and [Nginx Ingess](https://github.com/kubernetes/ingress-nginx) as a cheap ELB alternative.
+* Helm Tiller (currently v2.12.0)
+* [External DNS](https://github.com/kubernetes-incubator/external-dns) and [Nginx Ingess](https://github.com/kubernetes/ingress-nginx) as a cheap ELB alternative, with [Cert Manager](https://github.com/jetstack/cert-manager) for TLS certificates via Let's Encrypt.
 * Auto Scaling of worker nodes, if you enable the [Cluster AutoScaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler).
 * Persistent Volumes using GP2 storage on EBS.
 
@@ -22,10 +23,11 @@ Current features:
 2. [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
 3. Generate token: `python -c 'import random; print "%0x.%0x" % (random.SystemRandom().getrandbits(3*8), random.SystemRandom().getrandbits(8*8))' > token.txt`
 4. Make an SSH key on us-east-1 from the AWS console
-5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32" -var nginx-ingress-domain="ingress.mydomain.com"`
+5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32" -var nginx-ingress-domain="ingress.mydomain.com" -var cert-manager-email="myemail@address.com"`
 6. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
 7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
-10. Done!
+8. The [Cert Manager Issuer](manifests/cert-manager-issuer.yaml.tmpl) for Let's Encrypt has been applied to the default namespace. You will also need to apply it to any other namespaces you want to obtain TLS certificates for.
+9. Done!
 
 Optional Variables:
 
@@ -43,7 +45,12 @@ Optional Variables:
 * `external-dns-enabled` - Set to "0" to disable ExternalDNS (1 by default) - Existing Route 53 Domain required
 * `nginx-ingress-enabled` - Set to "0" to disable Nginx Ingress (1 by default)
 * `nginx-ingress-domain` - The DNS name to map to Nginx Ingress using External DNS ("" by default)
+* `cert-manager-enabled` - Set to "0" to disabled Cert Manager (1 by default)
+* `cert-manager-email` - The email address to use for Let's Encrypt certificate requests ("" by default)
 * `cluster-autoscaler-enabled` - Set to "1" to enable the cluster autoscaler (0 by default)
+
+### Examples
+* [Nginx deployment](examples/nginx.yaml)
 
 ### Ingress Notes
 

@@ -108,6 +108,16 @@ variable "nginx-ingress-domain" {
   description = "The DNS name to map to Nginx Ingress (using External DNS)"
 }
 
+variable "cert-manager-enabled" {
+  default = "1"
+  description = "Whether or not to enable the cert manager. (1 for enabled, 0 for disabled)"
+}
+
+variable "cert-manager-email" {
+  default = ""
+  description = "The email address to use for Let's Encrypt certificate requests"
+}
+
 variable "cluster-autoscaler-enabled" {
   default = "0"
   description = "Whether or not to enable the cluster autoscaler. (1 for enabled, 0 for disabled)"

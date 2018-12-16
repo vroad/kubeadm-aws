@@ -107,8 +107,27 @@ service procps start
 mkdir -p /home/ubuntu/.kube && cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config && chown -R ubuntu. /home/ubuntu/.kube
 echo 'source <(kubectl completion bash)' >> /home/ubuntu/.bashrc
 
+# Install helm
+wget https://storage.googleapis.com/kubernetes-helm/helm-v2.12.0-linux-amd64.tar.gz
+tar xvf helm-v2.12.0-linux-amd64.tar.gz
+mv linux-amd64/helm /usr/local/bin/
+rm -rf linux-amd64 helm-*
+
 if [ -f /tmp/fresh-cluster ]; then
   su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/13a990bb716c82a118b8e825b78189dcfbfb2f1e/Documentation/kube-flannel.yml' ubuntu
+
+  # Set up helm
+  su -c 'kubectl create serviceaccount tiller --namespace=kube-system' ubuntu
+  su -c 'kubectl create clusterrolebinding tiller-admin --serviceaccount=kube-system:tiller --clusterrole=cluster-admin' ubuntu
+  su -c 'helm init --service-account=tiller' ubuntu
+
+  # Install cert-manager
+  if [[ "${certmanagerenabled}" == "1" ]]; then
+    sleep 60 # Give Tiller a minute to start up
+    su -c 'helm install --name cert-manager --namespace cert-manager --version 0.5.2 stable/cert-manager --set createCustomResource=false && helm upgrade --install --namespace cert-manager --version 0.5.2 cert-manager stable/cert-manager --set createCustomResource=true' ubuntu
+  fi
+
+  # Install all the YAML we've put on S3
   mkdir /tmp/manifests
   aws s3 sync s3://${s3bucket}/manifests/ /tmp/manifests
   su -c 'kubectl apply -f /tmp/manifests/' ubuntu
