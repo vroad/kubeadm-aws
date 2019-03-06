@@ -34,7 +34,8 @@ Optional Variables:
 * `min-worker-count` - The minimum size of the worker node Auto-Scaling Group (1 by default)
 * `max-worker-count` - The maximum size of the worker node Auto-Scaling Group (1 by default)
 * `region` - Which AWS region to use (us-east-1 by default)
-* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.13.1 by default)
+* `az` - Which AWS availability zone to use (a by default)
+* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.13.2 by default)
 * `master-instance-type` - Which EC2 instance type to use for the master node (m1.small by default)
 * `master-spot-price` - The maximum spot bid for the master node ($0.01 by default)
 * `worker-instance-type` - Which EC2 instance type to use for the worker nodes (m1.small by default)
@@ -43,9 +44,9 @@ Optional Variables:
 * `backup-enabled` - Set to "0" to disable the automatic etcd backups (1 by default)
 * `backup-cron-expression` - A cron expression to use for the automatic etcd backups (`*/15 * * * *` by default)
 * `external-dns-enabled` - Set to "0" to disable ExternalDNS (1 by default) - Existing Route 53 Domain required
-* `nginx-ingress-enabled` - Set to "0" to disable Nginx Ingress (1 by default)
+* `nginx-ingress-enabled` - Set to "1" to enable Nginx Ingress (0 by default)
 * `nginx-ingress-domain` - The DNS name to map to Nginx Ingress using External DNS ("" by default)
-* `cert-manager-enabled` - Set to "0" to disabled Cert Manager (1 by default)
+* `cert-manager-enabled` - Set to "1" to enable Cert Manager (0 by default)
 * `cert-manager-email` - The email address to use for Let's Encrypt certificate requests ("" by default)
 * `cluster-autoscaler-enabled` - Set to "1" to enable the cluster autoscaler (0 by default)
 

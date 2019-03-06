@@ -103,7 +103,7 @@ variable "external-dns-enabled" {
 }
 
 variable "nginx-ingress-enabled" {
-  default = "1"
+  default = "0"
   description = "Whether or not to enable nginx ingress. (1 for enabled, 0 for disabled)"
 }
 
@@ -113,7 +113,7 @@ variable "nginx-ingress-domain" {
 }
 
 variable "cert-manager-enabled" {
-  default = "1"
+  default = "0"
   description = "Whether or not to enable the cert manager. (1 for enabled, 0 for disabled)"
 }
 
