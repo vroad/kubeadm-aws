@@ -15,7 +15,7 @@ Current features:
 * Persistent Volumes using GP2 storage on EBS.
 
 **Please use the releases rather than pulling from master. Master may be untested at any given point in time.**
-**This isn't designed for production (unless you're very brave) but I've found no stability issues so far for my personal development usage. However I have had instances where there is no available spot capacity for my chosen instance type in my Availability Zone which means you are without any nods for a while...**
+**This isn't designed for production (unless you're very brave) but I've found no stability issues so far for my personal development usage. However I have had instances where there is no available spot capacity for my chosen instance type in my Availability Zone which means you are without any nodes for a while...**
 
 ### Run it!
 
