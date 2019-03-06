@@ -22,10 +22,10 @@ Current features:
 1. Clone the repo
 2. [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
 3. Make an SSH key on us-east-1 from the AWS console
-4. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var admin-cidr-blocks="<my-public-ip-address>/32" -var nginx-ingress-domain="ingress.mydomain.com" -var cert-manager-email="myemail@address.com"`
+4. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var admin-cidr-blocks="<my-public-ip-address>/32"`
 5. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var admin-cidr-blocks="<my-public-ip-address>/32"`
 6. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
-7. The [Cert Manager Issuer](manifests/cert-manager-issuer.yaml.tmpl) for Let's Encrypt has been applied to the default namespace. You will also need to apply it to any other namespaces you want to obtain TLS certificates for.
+7. If you enabled cert-manager, the [Cert Manager Issuer](manifests/cert-manager-issuer.yaml.tmpl) for Let's Encrypt has been applied to the default namespace. You will also need to apply it to any other namespaces you want to obtain TLS certificates for.
 8. Done!
 
 Optional Variables:
