@@ -34,7 +34,7 @@ Optional Variables:
 * `max-worker-count` - The maximum size of the worker node Auto-Scaling Group (1 by default)
 * `region` - Which AWS region to use (us-east-1 by default)
 * `az` - Which AWS availability zone to use (a by default)
-* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.13.2 by default)
+* `kubernetes-version` - Which Kubernetes/kubeadm version to install (1.13.4 by default)
 * `master-instance-type` - Which EC2 instance type to use for the master node (m1.small by default)
 * `master-spot-price` - The maximum spot bid for the master node ($0.01 by default)
 * `worker-instance-type` - Which EC2 instance type to use for the worker nodes (m1.small by default)
