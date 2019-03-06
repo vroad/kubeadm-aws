@@ -21,13 +21,12 @@ Current features:
 
 1. Clone the repo
 2. [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
-3. Generate token: `python -c 'import random; print "%0x.%0x" % (random.SystemRandom().getrandbits(3*8), random.SystemRandom().getrandbits(8*8))' > token.txt`
-4. Make an SSH key on us-east-1 from the AWS console
-5. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32" -var nginx-ingress-domain="ingress.mydomain.com" -var cert-manager-email="myemail@address.com"`
-6. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var k8stoken=$(cat token.txt) -var admin-cidr-blocks="<my-public-ip-address>/32"`
-7. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
-8. The [Cert Manager Issuer](manifests/cert-manager-issuer.yaml.tmpl) for Let's Encrypt has been applied to the default namespace. You will also need to apply it to any other namespaces you want to obtain TLS certificates for.
-9. Done!
+3. Make an SSH key on us-east-1 from the AWS console
+4. Run terraform plan: `terraform plan -var k8s-ssh-key=<aws-ssh-key-name> -var admin-cidr-blocks="<my-public-ip-address>/32" -var nginx-ingress-domain="ingress.mydomain.com" -var cert-manager-email="myemail@address.com"`
+5. Build out infrastructure: `terraform apply -var k8s-ssh-key=<aws-ssh-key-name> -var admin-cidr-blocks="<my-public-ip-address>/32"`
+6. SSH to K8S master and run something: `ssh ubuntu@$(terraform output master_dns) -i <aws-ssh-key-name>.pem kubectl get no`
+7. The [Cert Manager Issuer](manifests/cert-manager-issuer.yaml.tmpl) for Let's Encrypt has been applied to the default namespace. You will also need to apply it to any other namespaces you want to obtain TLS certificates for.
+8. Done!
 
 Optional Variables:
 
@@ -49,6 +48,7 @@ Optional Variables:
 * `cert-manager-enabled` - Set to "1" to enable Cert Manager (0 by default)
 * `cert-manager-email` - The email address to use for Let's Encrypt certificate requests ("" by default)
 * `cluster-autoscaler-enabled` - Set to "1" to enable the cluster autoscaler (0 by default)
+* `k8stoken` - Override the automatically generated cluster bootstrap token
 
 ### Examples
 * [Nginx deployment](examples/nginx.yaml)

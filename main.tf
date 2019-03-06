@@ -35,6 +35,10 @@ provider "template" {
   version    = "1.0.0"
 }
 
+provider "random" {
+  version    = "2.0.0"
+}
+
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -248,7 +252,7 @@ data "template_file" "master-userdata" {
   template = "${file("master.sh")}"
 
   vars {
-    k8stoken = "${var.k8stoken}"
+    k8stoken = "${local.k8stoken}"
     clustername = "${var.cluster-name}"
     s3bucket = "${aws_s3_bucket.s3-bucket.id}"
     backupcron = "${var.backup-cron-expression}"
@@ -262,7 +266,7 @@ data "template_file" "worker-userdata" {
   template = "${file("worker.sh")}"
 
   vars {
-    k8stoken = "${var.k8stoken}"
+    k8stoken = "${local.k8stoken}"
     masterIP = "10.0.100.4"
     k8sversion = "${var.kubernetes-version}"
   }

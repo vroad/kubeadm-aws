@@ -23,7 +23,26 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 */
 
-variable "k8stoken" {}
+variable "k8stoken" {
+  default = ""
+  description = "Overrides the auto-generated bootstrap token"
+}
+
+resource "random_string" "k8stoken-first-part" {
+  length = 6
+  upper = false
+  special = false
+}
+
+resource "random_string" "k8stoken-second-part" {
+  length = 16
+  upper = false
+  special = false
+}
+
+locals {
+  k8stoken = "${var.k8stoken == "" ? "${random_string.k8stoken-first-part.result}.${random_string.k8stoken-second-part.result}" : "${var.k8stoken}"}"
+}
 
 variable "cluster-name" {
   default = "k8s"
