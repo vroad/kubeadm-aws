@@ -1,5 +1,7 @@
 ## Really cheap Kubernetes cluster on AWS with kubeadm
 
+**This project no longer seems to be working and I have stopped working on it. Feel free to fork it and/or use it as the basis for your own experiments.**
+
 This repository contains a bunch of Bash and Terraform code which provisions what I believe to be the cheapest possible single master Kubernetes cluster on AWS. You can run a 1 master, 1 worker cluster for somewhere around $6 a month, or just the master node (which can also run pods) for around $3 a month.
 
 To achieve this, it uses m1.small spot instances and the free ephemeral storage they come with instead of EBS volumes.
