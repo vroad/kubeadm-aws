@@ -1,4 +1,5 @@
-#!/bin/bash -ve
+#!/bin/bash
+set -euxov pipefail
 
 # Disable pointless daemons
 systemctl stop snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent

@@ -25,25 +25,29 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 */
 
 provider "aws" {
-  version    = "~> 1.48"
+  version    = "~> 2.23.0"
   access_key = "${var.access_key}"
   secret_key = "${var.secret_key}"
   region     = "${var.region}"
 }
 
 provider "template" {
-  version    = "1.0.0"
+  version    = "~> 2.1.2"
 }
 
 provider "random" {
-  version    = "2.0.0"
+  version    = "~> 2.2.0"
+}
+
+provider "local" {
+  version    = "~> 1.3"
 }
 
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
   enable_dns_hostnames = true
 
-  tags {
+  tags = {
     Name = "${var.cluster-name}"
     Environment = "${var.cluster-name}"
   }
@@ -52,7 +56,7 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "gw" {
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
+  tags = {
     Name = "${var.cluster-name}"
     Environment = "${var.cluster-name}"
   }
@@ -68,7 +72,7 @@ resource "aws_route_table" "r" {
 
   depends_on = ["aws_internet_gateway.gw"]
 
-  tags {
+  tags = {
     Name = "${var.cluster-name}"
     Environment = "${var.cluster-name}"
   }
@@ -85,7 +89,7 @@ resource "aws_subnet" "public" {
   availability_zone = "${var.region}${var.az}"
   map_public_ip_on_launch = true
 
-  tags {
+  tags = {
     Name = "${var.cluster-name}"
     Environment = "${var.cluster-name}"
   }
@@ -96,7 +100,7 @@ resource "aws_security_group" "kubernetes" {
   description = "Allow inbound ssh traffic"
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
+  tags = {
     Name = "${var.cluster-name}"
     Environment = "${var.cluster-name}"
   }
@@ -166,7 +170,7 @@ resource "aws_s3_bucket" "s3-bucket" {
   bucket_prefix   = "${var.cluster-name}"
   force_destroy   = "true"
 
-  tags {
+  tags = {
     Environment = "${var.cluster-name}"
   }
 
@@ -207,7 +211,7 @@ resource "aws_s3_bucket_object" "nginx-ingress-manifest" {
 data "template_file" "nginx-ingress-nodeport-manifest" {
   count  = "${var.nginx-ingress-enabled}"
   template = "${file("manifests/nginx-ingress-nodeport.yaml.tmpl")}"
-  vars {
+  vars = {
     nginx_ingress_domain = "${var.nginx-ingress-domain}"
   }
 }
@@ -215,17 +219,18 @@ resource "aws_s3_bucket_object" "nginx-ingress-nodeport-manifest" {
   count  = "${var.nginx-ingress-enabled}"
   bucket = "${aws_s3_bucket.s3-bucket.id}"
   key    = "manifests/nginx-ingress-nodeport.yaml"
-  content = "${data.template_file.nginx-ingress-nodeport-manifest.rendered}"
-  etag   = "${md5(data.template_file.nginx-ingress-nodeport-manifest.rendered)}"
+  content = "${data.template_file.nginx-ingress-nodeport-manifest[0].rendered}"
+  etag   = "${md5(data.template_file.nginx-ingress-nodeport-manifest[0].rendered)}"
 }
 
 data "template_file" "cluster-autoscaler-manifest" {
   template = "${file("manifests/cluster-autoscaler-autodiscover.yaml.tmpl")}"
-  vars {
+  vars = {
     cluster_name = "${var.cluster-name}"
     cluster_region = "${var.region}"
   }
 }
+
 resource "aws_s3_bucket_object" "cluster-autoscaler-manifest" {
   count  = "${var.cluster-autoscaler-enabled}"
   bucket = "${aws_s3_bucket.s3-bucket.id}"
@@ -236,7 +241,7 @@ resource "aws_s3_bucket_object" "cluster-autoscaler-manifest" {
 
 data "template_file" "cert-manager-issuer-manifest" {
   template = "${file("manifests/cert-manager-issuer.yaml.tmpl")}"
-  vars {
+  vars = {
     cert_manager_email = "${var.cert-manager-email}"
   }
 }
@@ -251,7 +256,7 @@ resource "aws_s3_bucket_object" "cert-manager-issuer-manifest" {
 data "template_file" "master-userdata" {
   template = "${file("master.sh")}"
 
-  vars {
+  vars = {
     k8stoken = "${local.k8stoken}"
     clustername = "${var.cluster-name}"
     s3bucket = "${aws_s3_bucket.s3-bucket.id}"
@@ -265,7 +270,7 @@ data "template_file" "master-userdata" {
 data "template_file" "worker-userdata" {
   template = "${file("worker.sh")}"
 
-  vars {
+  vars = {
     k8stoken = "${local.k8stoken}"
     masterIP = "10.0.100.4"
     k8sversion = "${var.kubernetes-version}"
@@ -371,7 +376,7 @@ EOF
 resource "aws_iam_role_policy_attachment" "autoscaling" {
   count      = "${var.cluster-autoscaler-enabled}"
   role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.autoscaling.arn}"
+  policy_arn = "${aws_iam_policy.autoscaling[0].arn}"
 }
 
 resource "aws_iam_role_policy_attachment" "cluster-policy" {
@@ -435,7 +440,7 @@ EOF
 resource "aws_iam_role_policy_attachment" "route53-policy" {
   count      = "${var.external-dns-enabled}"
   role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.route53-policy.arn}"
+  policy_arn = "${aws_iam_policy.route53-policy[0].arn}"
 }
 
 resource "aws_iam_instance_profile" "profile" {
@@ -458,7 +463,7 @@ resource "aws_spot_instance_request" "master" {
 
   depends_on = ["aws_internet_gateway.gw"]
 
-  tags {
+  tags = {
     Name = "${var.cluster-name}-master"
     Environment = "${var.cluster-name}"
   }
@@ -468,11 +473,24 @@ resource "aws_spot_instance_request" "master" {
       "ami"
     ]
   }
+  provisioner "remote-exec" {
+    inline = [
+      "/bin/bash -c \"timeout 900 sed '/finished-user-data/q' <(tail -f /var/log/cloud-init-output.log)\""
+    ]
+    connection {
+      host = "${aws_spot_instance_request.master.public_dns}"
+      type = "ssh"
+      user = "ubuntu"
+      private_key = "${file(var.private_key_path)}"
+    }
+  }
 }
 
 # Spot ASG for workers
 resource "aws_launch_template" "worker" {
-  iam_instance_profile        = { name = "${aws_iam_instance_profile.profile.name}" }
+  iam_instance_profile {
+    name = "${aws_iam_instance_profile.profile.name}"
+  }
   image_id                    = "${data.aws_ami.latest_ami.id}"
   name                        = "${var.cluster-name}-worker"
   vpc_security_group_ids      = ["${aws_security_group.kubernetes.id}"]
@@ -496,7 +514,7 @@ resource "aws_autoscaling_group" "worker" {
 
   launch_template {
     id = "${aws_launch_template.worker.id}"
-    version = "$$Latest"
+    version = "${aws_launch_template.worker.latest_version}"
   }
 
   tag {
@@ -523,4 +541,3 @@ resource "aws_autoscaling_group" "worker" {
     propagate_at_launch = true
   }
 }
-

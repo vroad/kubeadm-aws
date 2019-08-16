@@ -1,4 +1,5 @@
-#!/bin/bash -ve
+#!/bin/bash
+set -euxov pipefail
 
 # Disable pointless daemons
 systemctl stop snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent
@@ -50,7 +51,7 @@ mkdir /mnt/kubelet
 echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet --cloud-provider=aws"' > /etc/default/kubelet
 
 cat >init-config.yaml <<EOF
-apiVersion: kubeadm.k8s.io/v1alpha3
+apiVersion: kubeadm.k8s.io/v1beta1
 kind: InitConfiguration
 bootstrapTokens:
 - groups:
@@ -61,12 +62,14 @@ nodeRegistration:
   name: "$(hostname -f)"
   taints: []
 ---
-apiVersion: kubeadm.k8s.io/v1alpha3
+apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
-apiServerExtraArgs:
-  cloud-provider: aws
-controllerManagerExtraArgs:
-  cloud-provider: aws
+apiServer:
+  extraArgs:
+    cloud-provider: aws
+controllerManager:
+  extraArgs:
+    cloud-provider: aws
 networking:
   podSubnet: 10.244.0.0/16
 EOF
@@ -159,7 +162,7 @@ if [[ "${backupenabled}" == "1" ]]; then
 	echo "Polling $${NOTICE_URL} every $${POLL_INTERVAL} second(s)"
 	
 	# To whom it may concern: http://superuser.com/questions/590099/can-i-make-curl-fail-with-an-exitcode-different-than-0-if-the-http-status-code-i
-	while http_status=$(curl -o /dev/null -w '%{http_code}' -sL $${NOTICE_URL}); [ $${http_status} -ne 200 ]; do
+	while http_status=$(curl -o /dev/null -w '%%{http_code}' -sL $${NOTICE_URL}); [ $${http_status} -ne 200 ]; do
 	  echo "Polled termination notice URL. HTTP Status was $${http_status}."
 	  sleep $${POLL_INTERVAL}
 	done

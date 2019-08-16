@@ -72,7 +72,7 @@ variable "az" {
 }
 
 variable "kubernetes-version" {
-  default = "1.13.4"
+  default = "1.15.2"
   description = "Which version of Kubernetes to install"
 }
 
@@ -144,4 +144,8 @@ variable "cert-manager-email" {
 variable "cluster-autoscaler-enabled" {
   default = "0"
   description = "Whether or not to enable the cluster autoscaler. (1 for enabled, 0 for disabled)"
+}
+
+variable "private_key_path" {
+  description = "Path to private key files to run initialization scripts"
 }
